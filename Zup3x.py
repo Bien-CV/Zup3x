@@ -690,12 +690,11 @@ if __name__ == "__main__":
         
         choise = pyautogui.confirm(text='Do you want to enable git support ?', title='Zup3x Git', buttons=['Yes', 'No'])
         if (choise == 'Yes'):
-            bb_user = pyautogui.prompt(text='Please provide BitBucket username', title='Bitbucket login' , default='')
+            bb_user = pyautogui.prompt(text='Please provide BitBucket username', title='Bitbucket login' , default='Ousret')
             bb_pass = pyautogui.password(text='Please type your password', title='Bitbucket login', default='', mask='*')
-		else:
-			bb_user = None
-			bb_pass = None
-        
+        else:
+            bb_user = None
+            bb_pass = None
     else:
         
         username = getArgValue('u', sys.argv)
