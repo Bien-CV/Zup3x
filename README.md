@@ -39,8 +39,11 @@ Known bugs
 How does this actualy work ?
 ---------------------------
 1 - Place your project(s) at localProjects/ folder
+
 2 - Run Zup3x.py
+
 3 - Relax
 
 You can replace step 1 by providing User/password for your bitbucket account.
+
 Every repository that begin with "hop3x" prefix will be cloned and updated when changes occurs.
