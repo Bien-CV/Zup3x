@@ -568,6 +568,7 @@ def Zup3x_CORE(username, password, Hop3x_Instance, remoteGit = False):
     
     if (len(SESSIONS) == 0):
         print('<Warning> No session are available, something wrong!')
+        Hop3x_Instance.terminate()
         return -1
     
     if (isClientInitialized(SESSIONS[0]) == False):
