@@ -742,10 +742,11 @@ if __name__ == "__main__":
         
         SESSIONS = parseSession()
         
-        #If there aren't any DECONNECTION symbol on XML trace
-        if (isClientDeconnected(SESSIONS[0]) == False):
-            print('<Warning '+time.strftime('%Y/%m/%d-%H:%M:%S')+'> Failed to quit Hop3x, force quit instead..!')
-            Hop3x_Instance.terminate()
+        if (len(SESSIONS) != 0):
+            #If there aren't any DECONNECTION symbol on XML trace
+            if (isClientDeconnected(SESSIONS[0]) == False):
+                print('<Warning '+time.strftime('%Y/%m/%d-%H:%M:%S')+'> Failed to quit Hop3x, force quit instead..!')
+                Hop3x_Instance.terminate()
         
         t2 = datetime.now()
         delta = t2 - t1
