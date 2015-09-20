@@ -559,13 +559,17 @@ def Zup3x_CORE(username, password, Hop3x_Instance, remoteGit = False):
     time.sleep( 2 )
     print('<Info '+time.strftime('%Y/%m/%d-%H:%M:%S')+'> GUI Bot: Session automatic selection..')
     selectHop3xSession(1)
-    time.sleep( 10 )
-
+    time.sleep( 11 )
+    
     #Get session name by parsing workspace rep.
     print('<Info '+time.strftime('%Y/%m/%d-%H:%M:%S')+'> Parsing available session directory :')
     SESSIONS = parseSession()
     print ('<Dump> Sessions = '+str(SESSIONS))
-
+    
+    if (len(SESSIONS) == 0):
+        print('<Warning> No session are available, something wrong!')
+        return -1
+    
     if (isClientInitialized(SESSIONS[0]) == False):
         print ('<Fatal '+time.strftime('%Y/%m/%d-%H:%M:%S')+'> Hop3x is not connected')
         Hop3x_Instance.terminate()
