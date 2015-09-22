@@ -60,36 +60,28 @@ def getHop3xRepo(Username, Password):
     resp, content = API_BB.request("https://api.bitbucket.org/1.0/user/repositories", "GET")
     repoList = json.loads(content.decode("utf-8"))
     return repoList
+
+def manualHotKey(primaryKey, secondaryKey):
+    pyautogui.keyDown(primaryKey)
+    pyautogui.keyDown(secondaryKey)
+    
+    pyautogui.keyUp(primaryKey)
+    pyautogui.keyUp(secondaryKey)
+
 def closeContextMenu():
     pyautogui.press('esc')
     
 def openContextMenuFile():
-    pyautogui.keyDown('alt')
-    pyautogui.keyDown('f')
-    
-    pyautogui.keyUp('alt')
-    pyautogui.keyUp('f')
+    manualHotKey('alt', 'f')
     
 def openContextMenuEdition():
-    pyautogui.keyDown('alt')
-    pyautogui.keyDown('e')
-    
-    pyautogui.keyUp('alt')
-    pyautogui.keyUp('e')
+    manualHotKey('alt', 'e')
     
 def openContextMenuTools():
-    pyautogui.keyDown('alt')
-    pyautogui.keyDown('t')
-    
-    pyautogui.keyUp('alt')
-    pyautogui.keyUp('t')
+    manualHotKey('alt', 't')
 
 def openContextMenuAssist():
-    pyautogui.keyDown('alt')
-    pyautogui.keyDown('a')
-    
-    pyautogui.keyUp('alt')
-    pyautogui.keyUp('a')
+    manualHotKey('alt', 'a')
 
 def hitTabRange(NB_TIME):
     for i in range(NB_TIME):
@@ -170,22 +162,12 @@ def createNewFile(FILENAME, PROJECT_TYPE, TYPE):
 
 #Only meant for Windows OS (Fix for thoses who possese azerty keyboard)
 def PasteBuffer(BUFFER):
-    
     xerox.copy(BUFFER)
-    pyautogui.keyDown('ctrl')
-    pyautogui.keyDown('v')
-    
-    pyautogui.keyUp('ctrl')
-    pyautogui.keyUp('v')
+    manualHotKey('ctrl', 'v')
     
 def WhipeAll():
-    pyautogui.keyDown('ctrl')
-    pyautogui.keyDown('a')
-    
-    pyautogui.keyUp('ctrl')
-    pyautogui.keyUp('a')
-    
-    pyautogui.press('\r')
+    manualHotKey('ctrl', 'a')
+    pyautogui.press('backspace')
 
 def selectExplorerZone():
     pyautogui.moveTo(SCREEN_X/15, SCREEN_Y/3, 2)
@@ -237,7 +219,6 @@ def checkFileHandled(SESSION, FILE_TARGET):
         logger.info('IT Event on '+FILE_TARGET+' detected using XML parser.')
         return True
     else:
-        #print ('<Debug> '+lAttrib['K']+' Event on '+str(root[-1][2].text)+' detected using XML parser.')
         return False
 
 def isClientInitialized(SESSION):
@@ -494,12 +475,8 @@ def loadLocalProjects():
     return os.listdir("localProjects/")
 
 def legacyQuitHop3x():
-    pyautogui.keyDown('ctrl')
-    pyautogui.keyDown('q')
-    
-    pyautogui.keyUp('ctrl')
-    pyautogui.keyUp('q')
-    
+    manualHotKey('ctrl', 'q')
+    time.sleep(1) #Let messagebox appear on the screen
     pyautogui.press('enter')
 
 def getArgValue(target, argv):
@@ -535,7 +512,7 @@ def searchFileExplorer(SESSION, FILE_TARGET, FILES_LIST):
     
     return False
 
-def Zup3x_CORE(username, password, Hop3x_Instance, remoteGit = False):
+def Zup3x_CORE(username, password, Hop3x_Instance):
     
     logger.info('We are waiting for Hop3x applet to initialize (5s)')
     #Handle Hop3x login applet
