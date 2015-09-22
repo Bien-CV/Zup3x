@@ -5,7 +5,7 @@
     Zup3x Client
     Description: Hop3x Assistant Bot
     Author(s): TAHRI Ahmed
-    Version: Alpha
+    Version: Omega
     Notice: 
     
         This stand only for educational purposes, 
@@ -27,6 +27,8 @@ import xerox
 import xml.etree.cElementTree as ET
 import math
 from datetime import datetime
+import logging
+from logging.handlers import RotatingFileHandler
 
 __author__ = "Ousret"
 __date__ = "$19 sept. 2015 11:15:33$"
@@ -45,6 +47,12 @@ ENABLE_GIT = False
 ENABLE_LOCAL = True
 
 LOCAL_PROJECTS = []
+
+logger = logging.getLogger()
+logger.setLevel(logging.DEBUG)
+
+formatter = logging.Formatter('%(asctime)s :: %(levelname)s :: %(message)s')
+file_handler = RotatingFileHandler('logs/Zup3x-'+time.strftime('%Y-%m-%d-%H-%M-%S')+'.log', 'a', 1000000, 1)
 
 def getHop3xRepo(Username, Password):
     API_BB = httplib2.Http(".cache")
@@ -143,17 +151,17 @@ def createNewFile(FILENAME, PROJECT_TYPE, TYPE):
     
     if (PROJECT_TYPE == 'C'):
         if (TYPE == 'C'):
-            print ('<Info '+time.strftime('%Y/%m/%d-%H:%M:%S')+'> GUI Bot: Select C Source file type.')
+            logger.info('Zup3x is trying to select <Source C> type for new file')
             #Already checked. pass!
             #pyautogui.press('enter')
             hitTabRange(4)
         elif(TYPE == 'H'):
-            print ('<Info '+time.strftime('%Y/%m/%d-%H:%M:%S')+'>> GUI Bot: Select C Header file type.')
+            logger.info('Zup3x is trying to select <Header C> type for new file')
             hitTabRange(1)
             pyautogui.press('space')
             hitTabRange(3)
         elif(TYPE == 'Makefile'):
-            print ('<Info '+time.strftime('%Y/%m/%d-%H:%M:%S')+'>> GUI Bot: Select C Makefile file type.')
+            logger.info('Zup3x is trying to select <Makefile> type for new file')
             hitTabRange(2)
             pyautogui.press('space')
             hitTabRange(2)
@@ -195,14 +203,11 @@ def deleteXMLTrace(SESSION):
         #Do what you want with the file
         os.remove(fl)
 
-def checkFileHandled(SESSION, FILE_TARGET):
-    #<E K="IT" T="1442754654817" H="20/09/15-15:10:54"><T>d</T><F>c1lstop.c</F><P>TDA-Annexes</P><N>501</N></E>
-    
+def getLastestTraceBuffer(SESSION):
     CLIENT_NAME = os.listdir("Hop3xEtudiant/data/trace/")
     AVAILABLE_TRACE = sorted(glob.glob("Hop3xEtudiant/data/trace/"+CLIENT_NAME[0]+"/"+SESSION+"/" + "*.xml"), key=os.path.getctime)
     
     if (len(AVAILABLE_TRACE) == 0):
-        print ('<Warning '+time.strftime('%Y/%m/%d-%H:%M:%S')+'>> Enable to parse trace folder !')
         return False
     
     with open (AVAILABLE_TRACE[-1], "r") as myfile:
@@ -210,40 +215,43 @@ def checkFileHandled(SESSION, FILE_TARGET):
     
     data += '</TRACE>'
     
+    return data
+
+def checkFileHandled(SESSION, FILE_TARGET):
+    
+    data = getLastestTraceBuffer(SESSION)
+    if (data == False):
+        logger.warning('Unable to get lastest XML trace from trace folder !')
+        return False
+    
     tree = ET.ElementTree(ET.fromstring(data))
     root = tree.getroot()
     
     if (len(root) == 0):
-        print ('<Warning '+time.strftime('%Y/%m/%d-%H:%M:%S')+'>> Enable to parse XML, tree is empty, see ['+AVAILABLE_TRACE[-1]+']')
+        logger.warning('Enable to parse XML, tree is empty, see ['+AVAILABLE_TRACE[-1]+']')
         return False
     
     lAttrib = root[-1].attrib
     
     if ((lAttrib['K'] == 'IT'  and str(root[-1][2].text) == FILE_TARGET) or (lAttrib['K'] == 'ST' and str(root[-1][3].text) == FILE_TARGET)):
-        print ('<Notice '+time.strftime('%Y/%m/%d-%H:%M:%S')+'>> IT Event on '+FILE_TARGET+' detected using XML parser.')
+        logger.info('IT Event on '+FILE_TARGET+' detected using XML parser.')
         return True
     else:
         #print ('<Debug> '+lAttrib['K']+' Event on '+str(root[-1][2].text)+' detected using XML parser.')
         return False
 
 def isClientInitialized(SESSION):
-    CLIENT_NAME = os.listdir("Hop3xEtudiant/data/trace/")
-    AVAILABLE_TRACE = sorted(glob.glob("Hop3xEtudiant/data/trace/"+CLIENT_NAME[0]+"/"+SESSION+"/" + "*.xml"), key=os.path.getctime)
     
-    if (len(AVAILABLE_TRACE) == 0):
-        print ('<Warning '+time.strftime('%Y/%m/%d-%H:%M:%S')+'>> Enable to parse trace folder !')
+    data = getLastestTraceBuffer(SESSION)
+    if (data == False):
+        logger.warning('Unable to get lastest XML trace from trace folder !')
         return False
-    
-    with open (AVAILABLE_TRACE[-1], "r") as myfile:
-        data=myfile.read()
-    
-    data += '</TRACE>'
     
     tree = ET.ElementTree(ET.fromstring(data))
     root = tree.getroot()
     
     if (len(root) == 0):
-        print ('<Warning '+time.strftime('%Y/%m/%d-%H:%M:%S')+'>> Enable to parse XML, tree is empty, see ['+AVAILABLE_TRACE[-1]+']')
+        logger.error('Enable to parse XML, tree is empty, see ['+AVAILABLE_TRACE[-1]+']')
         return False
     lAttrib = root[-1].attrib
     
@@ -253,23 +261,17 @@ def isClientInitialized(SESSION):
         return False
     
 def isClientDeconnected(SESSION):
-    CLIENT_NAME = os.listdir("Hop3xEtudiant/data/trace/")
-    AVAILABLE_TRACE = sorted(glob.glob("Hop3xEtudiant/data/trace/"+CLIENT_NAME[0]+"/"+SESSION+"/" + "*.xml"), key=os.path.getctime)
     
-    if (len(AVAILABLE_TRACE) == 0):
-        print ('<Warning '+time.strftime('%Y/%m/%d-%H:%M:%S')+'>> Enable to parse trace folder !')
+    data = getLastestTraceBuffer(SESSION)
+    if (data == False):
+        logger.warning('Unable to get lastest XML trace from trace folder !')
         return False
-    
-    with open (AVAILABLE_TRACE[-1], "r") as myfile:
-        data=myfile.read()
-    
-    data += '</TRACE>'
     
     tree = ET.ElementTree(ET.fromstring(data))
     root = tree.getroot()
     
     if (len(root) == 0):
-        print ('<Warning '+time.strftime('%Y/%m/%d-%H:%M:%S')+'>> Enable to parse XML, tree is empty, see ['+AVAILABLE_TRACE[-1]+']')
+        logger.error('Enable to parse XML, tree is empty, see ['+AVAILABLE_TRACE[-1]+']')
         return False
     
     lAttrib = root[-1].attrib
@@ -280,23 +282,17 @@ def isClientDeconnected(SESSION):
         return False
 
 def isProjectCreated(SESSION):
-    CLIENT_NAME = os.listdir("Hop3xEtudiant/data/trace/")
-    AVAILABLE_TRACE = sorted(glob.glob("Hop3xEtudiant/data/trace/"+CLIENT_NAME[0]+"/"+SESSION+"/" + "*.xml"), key=os.path.getctime)
     
-    if (len(AVAILABLE_TRACE) == 0):
-        print ('<Warning '+time.strftime('%Y/%m/%d-%H:%M:%S')+'>> Enable to parse trace folder !')
+    data = getLastestTraceBuffer(SESSION)
+    if (data == False):
+        logger.warning('Unable to get lastest XML trace from trace folder !')
         return False
-    
-    with open (AVAILABLE_TRACE[-1], "r") as myfile:
-        data=myfile.read()
-    
-    data += '</TRACE>'
     
     tree = ET.ElementTree(ET.fromstring(data))
     root = tree.getroot()
     
     if (len(root) == 0):
-        print ('<Warning '+time.strftime('%Y/%m/%d-%H:%M:%S')+'>> Enable to parse XML, tree is empty, see ['+AVAILABLE_TRACE[-1]+']')
+        logger.error('Enable to parse XML, tree is empty, see ['+AVAILABLE_TRACE[-1]+']')
         return False
     
     lAttrib = root[-1].attrib
@@ -307,23 +303,17 @@ def isProjectCreated(SESSION):
         return False
 
 def isFileCreated(SESSION):
-    CLIENT_NAME = os.listdir("Hop3xEtudiant/data/trace/")
-    AVAILABLE_TRACE = sorted(glob.glob("Hop3xEtudiant/data/trace/"+CLIENT_NAME[0]+"/"+SESSION+"/" + "*.xml"), key=os.path.getctime)
     
-    if (len(AVAILABLE_TRACE) == 0):
-        print ('<Warning '+time.strftime('%Y/%m/%d-%H:%M:%S')+'>> Enable to parse trace folder !')
+    data = getLastestTraceBuffer(SESSION)
+    if (data == False):
+        logger.warning('Unable to get lastest XML trace from trace folder !')
         return False
-    
-    with open (AVAILABLE_TRACE[-1], "r") as myfile:
-        data=myfile.read()
-    
-    data += '</TRACE>'
     
     tree = ET.ElementTree(ET.fromstring(data))
     root = tree.getroot()
     
     if (len(root) == 0):
-        print ('<Warning '+time.strftime('%Y/%m/%d-%H:%M:%S')+'>> Enable to parse XML, tree is empty, see ['+AVAILABLE_TRACE[-1]+']')
+        logger.error('Enable to parse XML, tree is empty, see ['+AVAILABLE_TRACE[-1]+']')
         return False
     
     lAttrib = root[-1].attrib
@@ -339,7 +329,6 @@ def simulatePerfectStudent(BUFFER, FILE_EXTENSION):
     WhipeAll() #Delete default text provided by Hop3x
     
     #We need to detect /* */ if file extention == C or H
-    
     bufSize = len(BUFFER)
     EnableCodeC = False
     MakefileCode = False
@@ -498,7 +487,7 @@ def getFileLanguage(FILE_NAME):
     elif(Extention == '.class' or Extention == '.java'):
         return 'Java'
     else:
-        print ('<Warning '+time.strftime('%Y/%m/%d-%H:%M:%S')+'> Unknown file extension for '+FILE_NAME)
+        logger.warning('Zup3x does not recognize file extension for <'+FILE_NAME+'>')
         return 'Unknown'
 
 def loadLocalProjects():
@@ -548,67 +537,68 @@ def searchFileExplorer(SESSION, FILE_TARGET, FILES_LIST):
 
 def Zup3x_CORE(username, password, Hop3x_Instance, remoteGit = False):
     
-    print ('<Info '+time.strftime('%Y/%m/%d-%H:%M:%S')+'> Hop3x should be loading..')
+    logger.info('We are waiting for Hop3x applet to initialize (5s)')
     #Handle Hop3x login applet
     time.sleep( 5 ) #Wait for it..
     #Hop3x_Instance.terminate()
-    print('<Info '+time.strftime('%Y/%m/%d-%H:%M:%S')+'> GUI Bot: Automatic login')
+    logger.info('GUI Bot: Processing automatic login')
     setHop3xLogin(username, password)
     
     #Select session
     time.sleep( 2 )
-    print('<Info '+time.strftime('%Y/%m/%d-%H:%M:%S')+'> GUI Bot: Session automatic selection..')
+    logger.info('GUI Bot: Session automatic selection')
     selectHop3xSession(1)
     time.sleep( 11 )
     
     #Get session name by parsing workspace rep.
-    print('<Info '+time.strftime('%Y/%m/%d-%H:%M:%S')+'> Parsing available session directory :')
+    logger.info('Parsing available session folder(s)..')
     SESSIONS = parseSession()
-    print ('<Dump> Sessions = '+str(SESSIONS))
+    logger.info('Session(s) = '+str(SESSIONS))
     
     if (len(SESSIONS) == 0):
-        print('<Warning> No session are available, something wrong!')
+        logger.critical('There\'s no session available, something wrong!')
         Hop3x_Instance.terminate()
         return -1
     
     if (isClientInitialized(SESSIONS[0]) == False):
-        print ('<Fatal '+time.strftime('%Y/%m/%d-%H:%M:%S')+'> Hop3x is not connected')
+        logger.critical('Unable to find <CONNECTION> event on Hop3x XML Trace')
         Hop3x_Instance.terminate()
         return -1
 
     #Find local project if any
-    print ('<Info '+time.strftime('%Y/%m/%d-%H:%M:%S')+'> Parsing local project(s) from localProjects/')
+    logger.info('Loading local project(s) list from localProjects/*')
     LOCAL_PROJECTS = loadLocalProjects()
 
     if (len(LOCAL_PROJECTS) == 0):
-        print ('<Fatal '+time.strftime('%Y/%m/%d-%H:%M:%S')+'> Zup3x does not see any local project..')
+        logger.critical('Unable to find local project, localProjects is empty')
+        Hop3x_Instance.terminate()
         return -2
-
-    print('<Info '+time.strftime('%Y/%m/%d-%H:%M:%S')+'> Project(s) = '+str(LOCAL_PROJECTS))
-
+    
+    logger.info('Project(s) = '+str(LOCAL_PROJECTS))
+    
     for project in LOCAL_PROJECTS:
-
-        print ('<Info '+time.strftime('%Y/%m/%d-%H:%M:%S')+'> GUI Bot: Processing '+project)
-
+        
+        logger.info('Zup3x is now working on <'+project+'> project')
         #Do we have to create a new project ?
         if (projectExist(SESSIONS, project) == False):
-            print ('<Warning '+time.strftime('%Y/%m/%d-%H:%M:%S')+'> '+project+' does not exist, GUI Bot: Create project')
+            logger.warning('Hop3x does not have any project named <'+project+'>')
+            logger.info('Zup3x is now trying to create a new project in Hop3x')
             createNewProject(project, 'C+Make')
             if (isProjectCreated(SESSIONS[0]) == False):
-                print('<Fatal '+time.strftime('%Y/%m/%d-%H:%M:%S')+'> GUI Bot: Failed to create project.. Abord!')
+                logger.critical('Unable to find <AP> event, Hop3x haven\'t created our project.')
                 Hop3x_Instance.terminate()
                 return -3
         else:
-            print ('<Notice '+time.strftime('%Y/%m/%d-%H:%M:%S')+'> '+project+' project directory already exist.')
+            logger.info('Hop3x does have <'+project+'> in his local workspace, no need to create.')
 
         #Load local project files list
-        print ('<Info '+time.strftime('%Y/%m/%d-%H:%M:%S')+'> Parsing project files..')
+        logger.info('Loading files list in localProjects/'+project+'/*')
         files = os.listdir("localProjects/"+project)
         if (len(files) == 0):
-            print('<Notice '+time.strftime('%Y/%m/%d-%H:%M:%S')+'> Project '+project+' seem to be empty.')
+            logger.warning('There\'s no file to work on with <'+project+'>')
             continue
-
-        print ('<Info '+time.strftime('%Y/%m/%d-%H:%M:%S')+'> Files to process: '+str(files))
+        
+        logger.info('File(s) to process; '+str(files))
 
         for file in files:
             #Check file
@@ -616,11 +606,12 @@ def Zup3x_CORE(username, password, Hop3x_Instance, remoteGit = False):
 
                 #Hop3xEtudiant\data\workspace\2015-Travail-Personnel\TDA-Annexes
                 if (os.path.exists("Hop3xEtudiant/data/workspace/"+SESSIONS[0]+"/"+project+"/"+file) == False):
-                    print ('<Info '+time.strftime('%Y/%m/%d-%H:%M:%S')+'> GUI Bot: Creating '+file+'..')
+                    logger.info('<'+file+'> does not exist in Hop3x local workspace')
+                    logger.info('Zup3x is trying to create <'+file+'> in Hop3x')
                     createNewFile(getFileNameWithoutExtension(file), 'C', getFileLanguage(file))
 
                     if (isFileCreated(SESSIONS[0]) == False):
-                        print ('<Warning '+time.strftime('%Y/%m/%d-%H:%M:%S')+'> GUI Bot: Failed to create '+file+', abord..!')
+                        logger.critical('Zup3x is unable to create <'+file+'> on Hop3x, event AF is missing!')
                         Hop3x_Instance.terminate()
                         return -4
 
@@ -639,11 +630,10 @@ def Zup3x_CORE(username, password, Hop3x_Instance, remoteGit = False):
                     
                     #Non viable methode for changes detections, need to be reviewed!
                     if (math.fabs(remoteSize - localSize) > 50):
-                        print ('<Notice '+time.strftime('%Y/%m/%d-%H:%M:%S')+'> File '+file+' has been changed, will be rewrited.')
+                        logger.info('<'+file+'> is newer than Hop3x local copy, Zup3x gonna update it! DiffSize = ('+str(math.fabs(remoteSize - localSize))+' octet(s))')
                         #Search for file in Hop3x explorer
                         if (searchFileExplorer(SESSIONS[0], file, files) == True):
-                            print ('<Info '+time.strftime('%Y/%m/%d-%H:%M:%S')+'> File '+file+' has been found in Hop3x editor')
-                            
+                            logger.info('Zup3x is now ready to edit <'+file+'> in Hop3x editor, event IT/ST match file target!')
                             #Create buffer with target file.
                             with open ("localProjects/"+project+"/"+file, "r") as myfile:
                                 data=myfile.read()
@@ -652,43 +642,51 @@ def Zup3x_CORE(username, password, Hop3x_Instance, remoteGit = False):
                             simulatePerfectStudent(data, getFileLanguage(file))
                             
                         else:
-                            print ('<Warning '+time.strftime('%Y/%m/%d-%H:%M:%S')+'> Bot wasn\'t able to found '+file+' in Hop3x editor, sorry!')
+                            logger.warning('Unable to find ST/IT event that match file target, Zup3x is unable to edit <'+file+'>')
                     else:
-                        print ('<Notice '+time.strftime('%Y/%m/%d-%H:%M:%S')+'> '+file+' already up to date in Hop3x')
+                        logger.info('<'+file+'> is up to date, no need to change anything!')
                     
-                    
-
             else:
-                print ("<Warning '+time.strftime('%Y/%m/%d-%H:%M:%S')+'> localProjects/"+file+" is a directory !")
+                logger.warning('Zup3x is unable to process <localProjects/'+project+'/'+file+'> because it\'s folder, Hop3x does not support dir creation!')
                 
     return 0
 
 def getRemoteRepository(bb_user, bb_pass):
     
-    print ('<Info '+time.strftime('%Y/%m/%d-%H:%M:%S')+'> Trying to update remote repository from BitBucket API')
+    logger.info('Trying to update remote repository from BitBucket API')
     listRe = getHop3xRepo(bb_user, bb_pass)
     
     for racine in listRe:
-        print (racine['name']+' -- '+'https://bitbucket.org'+racine['resource_uri'])
         if ( (os.path.exists('localProjects/'+racine['name']) == False)):
             if ((racine['name'][:5] == 'hop3x')):
-                print ('<Notice '+time.strftime('%Y/%m/%d-%H:%M:%S')+'> Zup3x has detected new repository named '+racine['name'])
+                logger.info('Zup3x has detected new repository named '+racine['name'])
                 try:
                     subprocess.Popen(['git', 'clone', 'https://'+bb_user+':'+bb_pass+'@bitbucket.org/'+bb_user+'/'+racine['name']+'.git', 'localProjects/'+racine['name']])
                 except:
-                    print ('<Fatal '+time.strftime('%Y/%m/%d-%H:%M:%S')+'> Git is not installed or is not in path (Windows case)')
+                    logger.error('Git is not installed on this machine!')
             else:
-                print ('<Notice '+time.strftime('%Y/%m/%d-%H:%M:%S')+'> '+racine['name']+' is not meant to be cloned.')
+                logger.info('<'+racine['name']+'> is not meant to be cloned.')
         else:
             #Git pull
-            print ('<Warning '+time.strftime('%Y/%m/%d-%H:%M:%S')+'> Zup3x does not known how to update '+racine['name']+', sorry!')
+            logger.warning('Zup3x does not known how to update '+racine['name']+', sorry!')
 
 if __name__ == "__main__":
     
-    print ('<Info> Zup3x is starting..')
+    file_handler.setLevel(logging.DEBUG)
+    file_handler.setFormatter(formatter)
+    logger.addHandler(file_handler)
+
+    stream_handler = logging.StreamHandler()
+    stream_handler.setLevel(logging.DEBUG)
+    stream_handler.setFormatter(formatter)
+    logger.addHandler(stream_handler)
+    
+    logger.info('Zup3x is waking up, collecting data..')
     
     if len(sys.argv) < 5:
-        print ('<Info> usage: Zup3x.py -u [Hop3xUser] -p [Hop3xPass] [Optional: -ugit [BitBucketUser] -pgit [BitBucketPass] -sID [SessionID]]')
+        print ('usage: Zup3x.py -u [Hop3xUser] -p [Hop3xPass] [Optional: -ugit [BitBucketUser] -pgit [BitBucketPass] -sID [SessionID]]')
+        logger.info('No arguments are provided, sys.argv is empty.')
+        logger.info('Starting GUI configuration')
         
         username = pyautogui.prompt(text='Please provide Hop3x username', title='Zup3x Login' , default='')
         password = pyautogui.password(text='Please type your password', title='Zup3x Login', default='', mask='*')
@@ -711,7 +709,7 @@ if __name__ == "__main__":
         sessionID = getArgValue('sID', sys.argv)
     
     if (username is None or password is None):
-        print ('<Fatal '+time.strftime('%Y/%m/%d-%H:%M:%S')+'> Hop3x credentials are needed!')
+        logger.critical('Hop3x credentials are needed! Zup3x is going to stop.')
         exit()
     
     #Run without interuptions
@@ -720,38 +718,43 @@ if __name__ == "__main__":
         t1 = datetime.now()
         
         if (bb_user is None or bb_pass is None):
-            print ('<Notice '+time.strftime('%Y/%m/%d-%H:%M:%S')+'> You must provide bitbucket login/password to handle remote work')
+            logger.info('Optional: You must provide bitbucket login/password to enable remote work')
         else:
             getRemoteRepository(bb_user, bb_pass)
         
-        print('<Info '+time.strftime('%Y/%m/%d-%H:%M:%S')+'> Core: Create subprocess for Hop3x')
+        logger.info('Core: Create subprocess for Hop3x')
         FNULL = open(os.devnull, 'w')
-        Hop3x_Instance = subprocess.Popen(['java', '-Xmx512m', '-jar', 'hop3xEtudiant/lib/Hop3xEtudiant.jar'], stdout=FNULL, stderr=FNULL)
+        try:
+            Hop3x_Instance = subprocess.Popen(['java', '-Xmx512m', '-jar', 'hop3xEtudiant/lib/Hop3xEtudiant.jar'], stdout=FNULL, stderr=FNULL)
+        except:
+            logger.critical('Zup3x is unable to find Java runtime environement')
+            exit()
         
         res = Zup3x_CORE(username, password, Hop3x_Instance)
         waitNextIter = 0
         
         if (res == 0):
             waitNextIter = randrange(3600, 6600)
-            print ("<Notice> Next iteration in %i sec." % waitNextIter)
+            logger.info("Next interation in %i sec" % waitNextIter)
         elif(res < 0):
             waitNextIter = 25
-            print ("<Reset> Next iteration in %i sec after bad issue" % waitNextIter)
+            logger.warning("Next iteration in %i sec after bad issue" % waitNextIter)
         
         legacyQuitHop3x()
-        print('<Notice '+time.strftime('%Y/%m/%d-%H:%M:%S')+'> You should be deconnected from Hop3x')
+        logger.info('You should be deconnected from Hop3x')
         
         SESSIONS = parseSession()
         
         if (len(SESSIONS) != 0):
             #If there aren't any DECONNECTION symbol on XML trace
             if (isClientDeconnected(SESSIONS[0]) == False):
-                print('<Warning '+time.strftime('%Y/%m/%d-%H:%M:%S')+'> Failed to quit Hop3x, force quit instead..!')
+                logger.warning('Zup3x failed to quit Hop3x properly, SIGQUIT sended instead!')
+                logger.warning('Failed to quit Hop3x properly, force quit instead..!')
                 Hop3x_Instance.terminate()
         
         t2 = datetime.now()
         delta = t2 - t1
         
-        print ('<Info> Zup3x have worked for '+str(delta.total_seconds())+' sec.')
+        logger.info('Zup3x have worked for '+str(delta.total_seconds())+' sec.')
         
         time.sleep(waitNextIter)
