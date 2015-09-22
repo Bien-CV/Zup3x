@@ -554,6 +554,15 @@ def getArgValue(target, argv):
     return None
 
 def searchFileExplorer(SESSION, FILE_TARGET, FILES_LIST):
+    
+    #Test current file
+    selectEditorZone()
+    pyautogui.press('d')
+    time.sleep(1)
+    pyautogui.press('backspace')
+    if (checkFileHandled(SESSION, FILE_TARGET) == True):
+        return True
+    
     selectExplorerZone()
     
     #Be at the top of explorer selection
