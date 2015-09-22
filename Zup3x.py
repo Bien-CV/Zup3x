@@ -34,7 +34,7 @@ __author__ = "Ousret"
 __date__ = "$19 sept. 2015 11:15:33$"
 
 __VERSION__ = '0.1a' #Local Zup3x revision
-ZUP3X_ROOT_PATH = 'java -Xmx512m -jar Hop3xEtudiant/hop3xEtudiant/lib/Hop3xEtudiant.jar'
+ZUP3X_ROOT_PATH = 'java -Xmx512m -jar hop3xEtudiant/lib/Hop3xEtudiant.jar'
 
 SCREEN_X, SCREEN_Y = pyautogui.size()
 BUTTON_TAB_SCROLL_MAX = 19
@@ -355,8 +355,10 @@ def simulatePerfectStudent(BUFFER, FILE_EXTENSION):
         #Simulate afraid student of data loss..
         if (pos == bufSize/2):
             saveCurrentFile()
+            logger.info('Zup3x trigger CTRL+S at half of the current work')
         elif(pos == bufSize/3):
             saveCurrentFile()
+            logger.info('Zup3x trigger CTRL+S at one third of the current work')
         
         if (c == '\n'):
             pyautogui.press('enter')
@@ -367,57 +369,77 @@ def simulatePerfectStudent(BUFFER, FILE_EXTENSION):
             elif(MakeBackSlash == True):
                 pyautogui.press('backspace')
                 MakeBackSlash = False
+            time.sleep(0.5)
         elif(c == '\t'):
             if (EnableCodeC == False and MakefileCode == False):
                 pyautogui.press('\t')
+                time.sleep(0.5)
                 MakeBackSlash = True
         elif(c == ' '):
             pyautogui.press('space')
+            time.sleep(0.2)
         elif(c == '\\' and Win32Host == True):
             PasteBuffer('\\')
+            time.sleep(0.2)
         elif(c == '|' and Win32Host == True):
             PasteBuffer('|')
+            time.sleep(0.2)
         elif(c == '/'):
             
             if (C_CommentSlashAsterix == True and pos-1 >= 0 and BUFFER[pos-1] == '*'):
                 C_CommentSlashAsterix = False
                 if (FixMultipleLineComment == False):
                     pyautogui.press('/')
+                    time.sleep(0.2)
                 else:
                     FixMultipleLineComment = False
             else:
                 pyautogui.press('/')
+                time.sleep(0.2)
                 
         elif(c == '_' and Win32Host == True):
             PasteBuffer('_')
+            time.sleep(0.2)
         elif(c == '[' and Win32Host == True):
             PasteBuffer('[')
+            time.sleep(0.2)
         elif(c == ']' and Win32Host == True):
             PasteBuffer(']')
+            time.sleep(0.2)
         elif(c == '(' and Win32Host == True):
             PasteBuffer('(')
+            time.sleep(0.2)
         elif(c == ')' and Win32Host == True):
             PasteBuffer(')')
+            time.sleep(0.2)
         elif(c == '{' and Win32Host == True):
             PasteBuffer('{')
+            time.sleep(0.2)
         elif(c == '}'): 
             if (EnableCodeC == True and OneLineAcol == False):
                 pyautogui.press('down')
                 pyautogui.press('enter')
             else:
                 PasteBuffer('}')
+            time.sleep(0.2)
         elif(c == '"' and Win32Host == True):
             PasteBuffer('"')
+            time.sleep(0.2)
         elif(c == '#' and Win32Host == True):
             PasteBuffer('#')
+            time.sleep(0.2)
         elif(c == '<' and Win32Host == True):
             PasteBuffer('<')
+            time.sleep(0.2)
         elif(c == '!' and Win32Host == True):
             PasteBuffer('!')
+            time.sleep(0.2)
         elif(c == '&' and Win32Host == True):
             PasteBuffer('&')
+            time.sleep(0.2)
         elif(c == ':' and Win32Host == True):
             PasteBuffer(':')
+            time.sleep(0.2)
         elif(c == '*'):
             
             if (FixMultipleLineComment == True and pos+1 < bufSize and BUFFER[pos+1] == '/'):
@@ -428,10 +450,12 @@ def simulatePerfectStudent(BUFFER, FILE_EXTENSION):
                     pass
                 else:
                     pyautogui.press('multiply')
+                    time.sleep(0.2)
         elif(c == '\xc3'):  
             pyautogui.press('e')
+            time.sleep(0.2)
         else:
-            pyautogui.typewrite(c, interval=0.05)
+            pyautogui.typewrite(c, interval=0.08)
             
         pos += 1
 
@@ -510,7 +534,6 @@ def getArgValue(target, argv):
     return None
 
 def searchFileExplorer(SESSION, FILE_TARGET, FILES_LIST):
-    
     selectExplorerZone()
     
     #Be at the top of explorer selection
@@ -618,6 +641,7 @@ def Zup3x_CORE(username, password, Hop3x_Instance):
                     simulatePerfectStudent(data, getFileLanguage(file))
                     #Save current state
                     saveCurrentFile()
+                    logger.info('<'+file+'> is now up to date and saved with Hop3x.')
                 else:
                     #Test if any differences
                     remoteSize = os.path.getsize("Hop3xEtudiant/data/workspace/"+SESSIONS[0]+"/"+project+"/"+file)
