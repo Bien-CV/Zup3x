@@ -30,6 +30,7 @@ from datetime import datetime
 import random
 import logging
 from logging.handlers import RotatingFileHandler
+import difflib
 
 __author__ = "Ousret"
 __date__ = "$19 sept. 2015 11:15:33$"
