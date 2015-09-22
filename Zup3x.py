@@ -73,6 +73,24 @@ def getHop3xRepo(Username, Password):
     repoList = json.loads(content.decode("utf-8"))
     return repoList
 
+def mergeFiles(filename1, filename2):
+    
+    try:
+        f1 = open(filename1, 'r')
+        f2 = open(filename2, 'r')
+    except IOError as e:
+        logger.critical('mergeFiles has failed with '+filename1+' and '+filename2+' with '+e.strerror)
+        return None
+    
+    liste = list(difflib.ndiff(f1.readlines(),f2.readlines()))
+    diff = list() # Contiendra les différences et les lignes
+
+    for i,j in zip(range(liste.__len__()),liste):
+        if j[0]=='-' or j[0]=='+':
+            diff.append({i:j})
+
+    return diff
+
 def manualHotKey(primaryKey, secondaryKey):
     pyautogui.keyDown(primaryKey)
     pyautogui.keyDown(secondaryKey)
@@ -606,6 +624,7 @@ def Zup3x_CORE(username, password, Hop3x_Instance):
             logger.warning('Hop3x does not have any project named <'+project+'>')
             logger.info('Zup3x is now trying to create a new project in Hop3x')
             createNewProject(project, 'C+Make')
+            time.sleep(2) #Let Hop3x time to create event on XML trace file
             if (isProjectCreated(SESSIONS[0]) == False):
                 logger.critical('Unable to find <AP> event, Hop3x haven\'t created our project.')
                 Hop3x_Instance.terminate()
@@ -631,12 +650,12 @@ def Zup3x_CORE(username, password, Hop3x_Instance):
                     logger.info('<'+file+'> does not exist in Hop3x local workspace')
                     logger.info('Zup3x is trying to create <'+file+'> in Hop3x')
                     createNewFile(getFileNameWithoutExtension(file), 'C', getFileLanguage(file))
-
+                    time.sleep(2) #Let Hop3x time to create event on XML trace file
                     if (isFileCreated(SESSIONS[0]) == False):
                         logger.critical('Zup3x is unable to create <'+file+'> on Hop3x, event AF is missing!')
                         Hop3x_Instance.terminate()
                         return -4
-
+                        
                     #Create buffer with target file.
                     with open ("localProjects/"+project+"/"+file, "r") as myfile:
                         data=myfile.read()
@@ -692,21 +711,6 @@ def getRemoteRepository(bb_user, bb_pass):
         else:
             #Git pull
             logger.warning('Zup3x does not known how to update '+racine['name']+', sorry!')
-
-def mergeFiles(filename1 , filename2):
-    try:
-        with open(filename1,'r') as f1, open(filename2,'r') as f2:
-            liste = list(difflib.ndiff(f1.readlines(),f2.readlines()))
-
-            diff = list() # Contiendra les diffÃ©rences et les lignes
-
-            for i,j in zip(range(liste.__len__()),liste):
-                if j[0]=='-' or j[0]=='+':
-                    diff.append({i:j})
-
-            return diff
-    except IOError as e:
-        logger.error("Erreur dans l'ouverture d'un des fichiers %s/%s: %s" % (filename1,filename2,e.strerror))
 
 if __name__ == "__main__":
     
