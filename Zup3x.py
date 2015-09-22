@@ -30,6 +30,7 @@ from datetime import datetime
 import random
 import logging
 from logging.handlers import RotatingFileHandler
+import difflib
 
 __author__ = "Ousret"
 __date__ = "$19 sept. 2015 11:15:33$"
@@ -625,7 +626,7 @@ def Zup3x_CORE(username, password, Hop3x_Instance):
             #Check file
             if (os.path.isdir("localProjects/"+project+"/"+file) == False):
 
-                #If file is not yet present in Hop3x
+                #Hop3xEtudiant\data\workspace\2015-Travail-Personnel\TDA-Annexes
                 if (os.path.exists("Hop3xEtudiant/data/workspace/"+SESSIONS[0]+"/"+project+"/"+file) == False):
                     logger.info('<'+file+'> does not exist in Hop3x local workspace')
                     logger.info('Zup3x is trying to create <'+file+'> in Hop3x')
@@ -692,6 +693,21 @@ def getRemoteRepository(bb_user, bb_pass):
             #Git pull
             logger.warning('Zup3x does not known how to update '+racine['name']+', sorry!')
 
+def mergeFiles(filename1 , filename2):
+    try:
+        with open(filename1,'r') as f1, open(filename2,'r') as f2:
+            liste = list(difflib.ndiff(f1.readlines(),f2.readlines()))
+
+            diff = list() # Contiendra les différences et les lignes
+
+            for i,j in zip(range(liste.__len__()),liste):
+                if j[0]=='-' or j[0]=='+':
+                    diff.append({i:j})
+
+            return diff
+    except IOError as e:
+        logger.error("Erreur dans l'ouverture d'un des fichiers %s/%s: %s" % (filename1,filename2,e.strerror))
+
 if __name__ == "__main__":
     
     logger.info('Zup3x is waking up, collecting data..')
@@ -743,7 +759,6 @@ if __name__ == "__main__":
             logger.critical('Zup3x is unable to find Java runtime environement')
             exit()
         
-        #RES = Zup3x Code; 0 = NTP
         res = Zup3x_CORE(username, password, Hop3x_Instance)
         waitNextIter = 0
         
@@ -762,7 +777,8 @@ if __name__ == "__main__":
         if (len(SESSIONS) != 0):
             #If there aren't any DECONNECTION symbol on XML trace
             if (isClientDeconnected(SESSIONS[0]) == False):
-                logger.warning('Unable to see <DECONNECTION> event from XML trace, assuming it\'s not yet terminated.')
+                logger.warning('Zup3x failed to quit Hop3x properly, SIGQUIT sended instead!')
+                logger.warning('Failed to quit Hop3x properly, force quit instead..!')
                 Hop3x_Instance.terminate()
         
         t2 = datetime.now()
