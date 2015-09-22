@@ -27,13 +27,14 @@ import xerox
 import xml.etree.cElementTree as ET
 import math
 from datetime import datetime
+import random
 import logging
 from logging.handlers import RotatingFileHandler
 
 __author__ = "Ousret"
 __date__ = "$19 sept. 2015 11:15:33$"
 
-__VERSION__ = '0.1a' #Local Zup3x revision
+__VERSION__ = '0.1o' #Local Zup3x revision
 ZUP3X_ROOT_PATH = 'java -Xmx512m -jar hop3xEtudiant/lib/Hop3xEtudiant.jar'
 
 SCREEN_X, SCREEN_Y = pyautogui.size()
@@ -229,7 +230,7 @@ def checkFileHandled(SESSION, FILE_TARGET):
     lAttrib = root[-1].attrib
     
     if ((lAttrib['K'] == 'IT'  and str(root[-1][2].text) == FILE_TARGET) or (lAttrib['K'] == 'ST' and str(root[-1][3].text) == FILE_TARGET)):
-        logger.info('IT Event on '+FILE_TARGET+' detected using XML parser.')
+        logger.info(lAttrib['K']+' event on <'+FILE_TARGET+'> detected using XML parser.')
         return True
     else:
         return False
@@ -494,7 +495,7 @@ def getFileExtension(FILE_NAME):
         return file_extension
 
 def getFileLanguage(FILE_NAME):
-    if (FILE_NAME == 'Makefile' or FILE_NAME == 'makefile'):
+    if (FILE_NAME.lower() == 'makefile'):
         return 'Makefile'
     
     Extention = getFileExtension(FILE_NAME)
@@ -579,6 +580,7 @@ def Zup3x_CORE(username, password, Hop3x_Instance):
         return -1
     
     if (isClientInitialized(SESSIONS[0]) == False):
+        logger.critical('Zup3x failed to initialize Hop3x, user/mdp may be wrong!')
         logger.critical('Unable to find <CONNECTION> event on Hop3x XML Trace')
         Hop3x_Instance.terminate()
         return -1
@@ -589,7 +591,8 @@ def Zup3x_CORE(username, password, Hop3x_Instance):
 
     if (len(LOCAL_PROJECTS) == 0):
         logger.critical('Unable to find local project, localProjects is empty')
-        Hop3x_Instance.terminate()
+        time.sleep(5)
+        legacyQuitHop3x()
         return -2
     
     logger.info('Project(s) = '+str(LOCAL_PROJECTS))
@@ -680,7 +683,7 @@ def getRemoteRepository(bb_user, bb_pass):
             if ((racine['name'][:5] == 'hop3x')):
                 logger.info('Zup3x has detected new repository named '+racine['name'])
                 try:
-                    subprocess.Popen(['git', 'clone', 'https://'+bb_user+':'+bb_pass+'@bitbucket.org/'+bb_user+'/'+racine['name']+'.git', 'localProjects/'+racine['name']])
+                    subprocess.Popen(['git', 'clone', 'https://'+bb_user+':'+bb_pass.replace('@', '%40')+'@bitbucket.org/'+bb_user+'/'+racine['name']+'.git', 'localProjects/'+racine['name']])
                 except:
                     logger.error('Git is not installed on this machine!')
             else:
@@ -744,7 +747,7 @@ if __name__ == "__main__":
         waitNextIter = 0
         
         if (res == 0):
-            waitNextIter = randrange(3600, 6600)
+            waitNextIter = random.randrange(3600, 6600)
             logger.info("Next interation in %i sec" % waitNextIter)
         elif(res < 0):
             waitNextIter = 25
@@ -766,5 +769,4 @@ if __name__ == "__main__":
         delta = t2 - t1
         
         logger.info('Zup3x have worked for '+str(delta.total_seconds())+' sec.')
-        
         time.sleep(waitNextIter)
