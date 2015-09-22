@@ -625,7 +625,7 @@ def Zup3x_CORE(username, password, Hop3x_Instance):
             #Check file
             if (os.path.isdir("localProjects/"+project+"/"+file) == False):
 
-                #Hop3xEtudiant\data\workspace\2015-Travail-Personnel\TDA-Annexes
+                #If file is not yet present in Hop3x
                 if (os.path.exists("Hop3xEtudiant/data/workspace/"+SESSIONS[0]+"/"+project+"/"+file) == False):
                     logger.info('<'+file+'> does not exist in Hop3x local workspace')
                     logger.info('Zup3x is trying to create <'+file+'> in Hop3x')
@@ -743,6 +743,7 @@ if __name__ == "__main__":
             logger.critical('Zup3x is unable to find Java runtime environement')
             exit()
         
+        #RES = Zup3x Code; 0 = NTP
         res = Zup3x_CORE(username, password, Hop3x_Instance)
         waitNextIter = 0
         
@@ -761,8 +762,7 @@ if __name__ == "__main__":
         if (len(SESSIONS) != 0):
             #If there aren't any DECONNECTION symbol on XML trace
             if (isClientDeconnected(SESSIONS[0]) == False):
-                logger.warning('Zup3x failed to quit Hop3x properly, SIGQUIT sended instead!')
-                logger.warning('Failed to quit Hop3x properly, force quit instead..!')
+                logger.warning('Unable to see <DECONNECTION> event from XML trace, assuming it\'s not yet terminated.')
                 Hop3x_Instance.terminate()
         
         t2 = datetime.now()
