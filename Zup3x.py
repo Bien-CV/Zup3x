@@ -31,6 +31,7 @@ import random
 import logging
 from logging.handlers import RotatingFileHandler
 import difflib
+import shutil
 
 __author__ = "Ousret"
 __date__ = "$19 sept. 2015 11:15:33$"
@@ -218,6 +219,32 @@ def deleteXMLTrace(SESSION):
         #Do what you want with the file
         os.remove(fl)
 
+def getDeclaredFilesHop3x(XMLTREE):
+    try:
+        with open(XMLTREE, 'r') as f1:
+            data = f1.read()
+    except IOError as e:
+        logger.error('Unable to read XML file tree, see <'+XMLTREE+'>')
+        return False
+    
+    tree = ET.ElementTree(ET.fromstring(data))
+    root = tree.getroot()
+    
+    if (len(root) == 0):
+        logger.error('Enable to parse XML, tree is empty, see <'+XMLTREE+'>')
+        return False
+    
+    declaredFiles = []
+    
+    for child in root:
+        declaredFiles.append(child.text)
+        
+    return declaredFiles
+
+def getDeclaredFilesProject(SESSION, PROJECT_NAME):
+    #hop3xEtudiant\data\workspace\2015-Travail-Personnel\TDA-Annexes
+    return getDeclaredFilesHop3x('hop3xEtudiant/data/workspace/'+SESSION+'/'+PROJECT_NAME+'/'+PROJECT_NAME+'.xml')
+
 def getLastestTraceBuffer(SESSION):
     CLIENT_NAME = os.listdir("Hop3xEtudiant/data/trace/")
     AVAILABLE_TRACE = sorted(glob.glob("Hop3xEtudiant/data/trace/"+CLIENT_NAME[0]+"/"+SESSION+"/" + "*.xml"), key=os.path.getctime)
@@ -225,8 +252,12 @@ def getLastestTraceBuffer(SESSION):
     if (len(AVAILABLE_TRACE) == 0):
         return False
     
-    with open (AVAILABLE_TRACE[-1], "r") as myfile:
-        data=myfile.read()
+    try:
+        with open (AVAILABLE_TRACE[-1], "r") as myfile:
+            data=myfile.read()
+    except IOError as e:
+        logger.error('Unable to open Hop3x XML trace <'+AVAILABLE_TRACE[-1]+'>')
+        return False
     
     data += '</TRACE>'
     
@@ -243,7 +274,7 @@ def checkFileHandled(SESSION, FILE_TARGET):
     root = tree.getroot()
     
     if (len(root) == 0):
-        logger.warning('Enable to parse XML, tree is empty, see ['+AVAILABLE_TRACE[-1]+']')
+        logger.error('Enable to parse XML, tree is empty, see trace file')
         return False
     
     lAttrib = root[-1].attrib
@@ -265,7 +296,7 @@ def isClientInitialized(SESSION):
     root = tree.getroot()
     
     if (len(root) == 0):
-        logger.error('Enable to parse XML, tree is empty, see ['+AVAILABLE_TRACE[-1]+']')
+        logger.error('Enable to parse XML, tree is empty, see trace file')
         return False
     lAttrib = root[-1].attrib
     
@@ -285,7 +316,7 @@ def isClientDeconnected(SESSION):
     root = tree.getroot()
     
     if (len(root) == 0):
-        logger.error('Enable to parse XML, tree is empty, see ['+AVAILABLE_TRACE[-1]+']')
+        logger.error('Enable to parse XML, tree is empty, see trace file')
         return False
     
     lAttrib = root[-1].attrib
@@ -327,7 +358,7 @@ def isFileCreated(SESSION):
     root = tree.getroot()
     
     if (len(root) == 0):
-        logger.error('Enable to parse XML, tree is empty, see ['+AVAILABLE_TRACE[-1]+']')
+        logger.error('Enable to parse XML, tree is empty, see trace file')
         return False
     
     lAttrib = root[-1].attrib
@@ -553,8 +584,10 @@ def getArgValue(target, argv):
         
     return None
 
-def searchFileExplorer(SESSION, FILE_TARGET, FILES_LIST):
+def searchFileExplorer(SESSION, FILE_TARGET, FILES_LIST, PROJECT_TARGET):
     
+    declaredFiles = getDeclaredFilesProject(SESSION, PROJECT_TARGET)
+    logger.info(str(declaredFiles))
     #Test current file
     selectEditorZone()
     pyautogui.press('d')
@@ -566,7 +599,7 @@ def searchFileExplorer(SESSION, FILE_TARGET, FILES_LIST):
     selectExplorerZone()
     
     #Be at the top of explorer selection
-    for i in range(10):
+    for i in range(len(FILES_LIST)):
         pyautogui.press('up')
     
     for file in FILES_LIST:
@@ -628,6 +661,10 @@ def Zup3x_CORE(username, password, Hop3x_Instance):
     for project in LOCAL_PROJECTS:
         
         logger.info('Zup3x is now working on <'+project+'> project')
+        
+        declaredFiles = getDeclaredFilesProject(SESSIONS[0], project)
+        logger.info(str(declaredFiles))
+        
         #Do we have to create a new project ?
         if (projectExist(SESSIONS, project) == False):
             logger.warning('Hop3x does not have any project named <'+project+'>')
@@ -683,7 +720,7 @@ def Zup3x_CORE(username, password, Hop3x_Instance):
                     if (math.fabs(remoteSize - localSize) > 50):
                         logger.info('<'+file+'> is newer than Hop3x local copy, Zup3x gonna update it! DiffSize = ('+str(math.fabs(remoteSize - localSize))+' octet(s))')
                         #Search for file in Hop3x explorer
-                        if (searchFileExplorer(SESSIONS[0], file, files) == True):
+                        if (searchFileExplorer(SESSIONS[0], file, files, project) == True):
                             logger.info('Zup3x is now ready to edit <'+file+'> in Hop3x editor, event IT/ST match file target!')
                             #Create buffer with target file.
                             with open ("localProjects/"+project+"/"+file, "r") as myfile:
@@ -715,11 +752,29 @@ def getRemoteRepository(bb_user, bb_pass):
                     subprocess.Popen(['git', 'clone', 'https://'+bb_user+':'+bb_pass.replace('@', '%40')+'@bitbucket.org/'+bb_user+'/'+racine['name']+'.git', 'localProjects/'+racine['name']])
                 except:
                     logger.error('Git is not installed on this machine!')
+                    return
             else:
                 logger.info('<'+racine['name']+'> is not meant to be cloned.')
         else:
-            #Git pull
-            logger.warning('Zup3x does not known how to update '+racine['name']+', sorry!')
+            #Update current copy
+            logger.info('Remove old copy of <'+racine['name']+'> from localProjects/')
+            try:
+                if sys.platform == 'win32':
+                    #subprocess.Popen(['rmdir', 'localProjects/'+racine['name']+'/', '/s', '/q'])
+                    sys.call('rmdir', '/s', '/q', 'localProjects/'+racine['name'])
+                else:
+                    sys.call('rm', '-rf', "localProjects/"+racine['name']+"/")
+                
+            except:
+                logger.error('Unable to remove old copy of '+racine['name']+' from localProjects/')
+                return
+            logger.info(racine['name']+' is being updated from lastest source available online')
+            try:
+                subprocess.Popen(['git', 'clone', 'https://'+bb_user+':'+bb_pass.replace('@', '%40')+'@bitbucket.org/'+bb_user+'/'+racine['name']+'.git', 'localProjects/'+racine['name']])
+            except:
+                logger.error('Git is not installed on this machine!')
+                return
+            #logger.warning('Zup3x does not known how to update '+racine['name']+', sorry!')
 
 if __name__ == "__main__":
     
