@@ -48,11 +48,21 @@ ENABLE_LOCAL = True
 
 LOCAL_PROJECTS = []
 
+#Logs params, don't change anything unless you known what you'r doing!
 logger = logging.getLogger()
 logger.setLevel(logging.DEBUG)
 
 formatter = logging.Formatter('%(asctime)s :: %(levelname)s :: %(message)s')
 file_handler = RotatingFileHandler('logs/Zup3x-'+time.strftime('%Y-%m-%d-%H-%M-%S')+'.log', 'a', 1000000, 1)
+
+file_handler.setLevel(logging.DEBUG)
+file_handler.setFormatter(formatter)
+logger.addHandler(file_handler)
+
+stream_handler = logging.StreamHandler()
+stream_handler.setLevel(logging.DEBUG)
+stream_handler.setFormatter(formatter)
+logger.addHandler(stream_handler)
 
 def getHop3xRepo(Username, Password):
     API_BB = httplib2.Http(".cache")
@@ -82,6 +92,9 @@ def openContextMenuTools():
 
 def openContextMenuAssist():
     manualHotKey('alt', 'a')
+    
+def saveCurrentFile():
+    manualHotKey('ctrl', 's')
 
 def hitTabRange(NB_TIME):
     for i in range(NB_TIME):
@@ -92,7 +105,7 @@ def createNewProject(PROJECT_NAME, TYPE):
     openContextMenuFile()
     time.sleep(1)
     pyautogui.press('enter')
-    time.sleep( 1 )
+    time.sleep(2)
     pyautogui.typewrite(PROJECT_NAME, interval=0.2)
     
     #Next, select project type
@@ -131,9 +144,9 @@ def createNewProject(PROJECT_NAME, TYPE):
     
 def createNewFile(FILENAME, PROJECT_TYPE, TYPE):
     openContextMenuFile()
-    time.sleep(0.2)
+    time.sleep(0.5)
     pyautogui.press('down')
-    time.sleep(0.2)
+    time.sleep(0.5)
     pyautogui.press('enter')
     time.sleep( 2 )
     pyautogui.typewrite(FILENAME, interval=0.2)
@@ -329,7 +342,6 @@ def simulatePerfectStudent(BUFFER, FILE_EXTENSION):
     OneLineAcol = False
     
     MakeBackSlash = False
-    
     pos = 0
     
     for c in BUFFER:
@@ -339,6 +351,12 @@ def simulatePerfectStudent(BUFFER, FILE_EXTENSION):
             C_CommentSlashAsterix = True
         elif(EnableCodeC and c == '{'):
             OneLineAcol = True
+        
+        #Simulate afraid student of data loss..
+        if (pos == bufSize/2):
+            saveCurrentFile()
+        elif(pos == bufSize/3):
+            saveCurrentFile()
         
         if (c == '\n'):
             pyautogui.press('enter')
@@ -445,7 +463,7 @@ def getFileNameWithoutExtension(FILE_NAME):
     return filename
 
 def getFileExtension(FILE_NAME):
-    if (FILE_NAME == 'Makefile' or FILE_NAME == 'makefile'):
+    if (FILE_NAME.lower() == 'makefile'):
         return 'Makefile'
     else:
         filename, file_extension = os.path.splitext(FILE_NAME)
@@ -457,15 +475,15 @@ def getFileLanguage(FILE_NAME):
     
     Extention = getFileExtension(FILE_NAME)
     
-    if (Extention == '.c' or Extention == '.C'):
+    if (Extention.lower() == '.c'):
         return 'C'
-    elif(Extention == '.h' or Extention == '.H'):
+    elif(Extention.lower() == '.h'):
         return 'H'
-    elif(Extention == '.rb'):
+    elif(Extention.lower() == '.rb'):
         return 'Ruby'
-    elif(Extention == '.py'):
+    elif(Extention.lower() == '.py'):
         return 'Python'
-    elif(Extention == '.class' or Extention == '.java'):
+    elif(Extention.lower() == '.class' or Extention.lower() == '.java'):
         return 'Java'
     else:
         logger.warning('Zup3x does not recognize file extension for <'+FILE_NAME+'>')
@@ -598,8 +616,8 @@ def Zup3x_CORE(username, password, Hop3x_Instance):
 
                     #Start writing code..!
                     simulatePerfectStudent(data, getFileLanguage(file))
-
                     #Save current state
+                    saveCurrentFile()
                 else:
                     #Test if any differences
                     remoteSize = os.path.getsize("Hop3xEtudiant/data/workspace/"+SESSIONS[0]+"/"+project+"/"+file)
@@ -648,15 +666,6 @@ def getRemoteRepository(bb_user, bb_pass):
             logger.warning('Zup3x does not known how to update '+racine['name']+', sorry!')
 
 if __name__ == "__main__":
-    
-    file_handler.setLevel(logging.DEBUG)
-    file_handler.setFormatter(formatter)
-    logger.addHandler(file_handler)
-
-    stream_handler = logging.StreamHandler()
-    stream_handler.setLevel(logging.DEBUG)
-    stream_handler.setFormatter(formatter)
-    logger.addHandler(stream_handler)
     
     logger.info('Zup3x is waking up, collecting data..')
     
