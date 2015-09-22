@@ -692,6 +692,21 @@ def getRemoteRepository(bb_user, bb_pass):
             #Git pull
             logger.warning('Zup3x does not known how to update '+racine['name']+', sorry!')
 
+def mergeFiles(filename1 , filename2):
+    try:
+        with open(filename1,'r') as f1, open(filename2,'r') as f2:
+            liste = list(difflib.ndiff(f1.readlines(),f2.readlines()))
+
+            diff = list() # Contiendra les différences et les lignes
+
+            for i,j in zip(range(liste.__len__()),liste):
+                if j[0]=='-' or j[0]=='+':
+                    diff.append({i:j})
+
+            return diff
+    except IOError as e:
+        logger.error("Erreur dans l'ouverture d'un des fichiers %s/%s: %s" % (filename1,filename2,e.strerror))
+
 if __name__ == "__main__":
     
     logger.info('Zup3x is waking up, collecting data..')
