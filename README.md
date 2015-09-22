@@ -1,5 +1,5 @@
 Projet Zup3x (Python)
-=========
+==
 
 Tool under MIT license, for educational purpose only. (And fair use)
 This project is meant for very limited amount of people. (Student at Maine University of Le Mans, FR.)
@@ -13,18 +13,19 @@ You can schedule for fake update to keep your privacy safe from admin.
 Don't do anything stupid with this tool. There is high chance that hop3x would be updated to avoid Zup3x from their network.
 If so, please fork this project and find another way to Zup3x!
 
-THIS PROGRAM IS STILL UNDER TESTING, RUN IT AT YOUR OWN RISKS!
----------------------------------------------------------------
+> THIS PROGRAM IS STILL UNDER TESTING, RUN IT AT YOUR OWN RISKS!
 
 Version Alpha
 (c) TAHRI Ahmed R. @Ousret
 
 ZupZupZup Codename L3SPI2015
------------------------------
+-
 Required:
 - Python 3.5
-- pip install pyautogui, httplib2, glob
-- pip install xerox (for Windows)
+- pip install pyautogui, httplib2, glob, xerox
+
+> If you are on Unix OS, please install pyobjc-core, pyobjc (in that order) to get pyautogui working.
+> You also need Quartz on Unix OS if not already installed.
 
 Zup3x is a GUI bot. You can dedicate a VM for your best interest!
 Or run it while you are not using your machine.
@@ -33,17 +34,17 @@ Or run it while you are not using your machine.
 python Zup3x.py -u Hop3xUser -p ****** [Optional: -ugit BitBucketUser -pgit *****]
 
 Known bugs
----------------------------
-- You tell me.
+-
+* Could have some difficulties to find specific file in Hop3x explorer
+* AZERTY keyboard are not recognized on pyautogui with Unix [Working on it]
 
 How does this actualy work ?
----------------------------
-1 - Place your project(s) at localProjects/ folder
+-
 
-2 - Run Zup3x.py
+1. Place your project(s) at localProjects/ folder
+2. Run Zup3x.py
+3. Relax
 
-3 - Relax
+You can replace step 1 by providing User/password of your bitbucket account.
 
-You can replace step 1 by providing User/password for your bitbucket account.
-
-Every repository that begin with "hop3x" prefix will be cloned and updated when changes occurs.
+Every repository (private or not) that begin with "hop3x" prefix will be cloned and updated when changes occurs.
