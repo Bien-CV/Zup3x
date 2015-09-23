@@ -702,7 +702,9 @@ def Zup3x_CORE(username, password, Hop3x_Instance):
             logger.info('Zup3x is now trying to create a new project in Hop3x')
             createNewProject(project, 'C+Make')
             time.sleep(2) #Let Hop3x time to create event on XML trace file
-            if (isProjectCreated(SESSIONS[0]) == False):
+            targetSession = getTargetSession(SESSIONS, project)
+            time.sleep(2)
+            if (isProjectCreated(targetSession) == False):
                 logger.critical('Unable to find <AP> event, Hop3x haven\'t created our project.')
                 Hop3x_Instance.terminate()
                 return -3
