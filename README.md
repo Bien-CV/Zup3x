@@ -23,8 +23,6 @@ This tool is still under testing, use it at your own risk.
 > When they impose something such as Hop3x, 
 > they had to made sure that it is beyond reproach.
 
-This text you see here is *actually* written in Markdown! To get a feel for Markdown's syntax, type some text into the left window and watch the results in the right.
-
 ### Version
 0.2.1
 
