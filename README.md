@@ -1,50 +1,86 @@
-Projet Zup3x (Python)
-==
+# Zup3x Client (0.2)
 
-Tool under MIT license, for educational purpose only. (And fair use)
-This project is meant for very limited amount of people. (Student at Maine University of Le Mans, FR.)
+Zup3x is meant to replace Hop3x Student. This tool could avoid lot of pain in using Hop3x.
+Hop3x is mandatory for L3 SPI students at Le Maine University of Le Mans (FR.). This tool allow you to
+use your modern and shiny IDE and keep your project up to date in Hop3x.
+This tool is still under testing, use it at your own risk.
 
-This tool was originally created to avoid suffering when coding with Hop3x. (No offense)
-Some student have to use Hop3x in order to be tracked in their current project and being rated.
+**Functions**
+  - Create, edit files/projects in Hop3x like a human being.
+  - Compiles, tests with Hop3x and send result(s) through email.
+  - Get logs from every update made by email.
+  - Update Hop3x with remote Gits. (Bitbucket only)
 
-This tool allow you to use modern/shiny IDE and still update your work on Hop3x like a human being!
-You can schedule for fake update to keep your privacy safe from admin.
+**Forbidden**
 
-Don't do anything stupid with this tool. There is high chance that hop3x would be updated to avoid Zup3x from their network.
-If so, please fork this project and find another way to Zup3x!
+    Using this tool without proper sources, you have to use what you made !
+    Don't try to fool your teacher with foreign sources, exams will eventually take off your mask!
 
-> THIS PROGRAM IS STILL UNDER TESTING, RUN IT AT YOUR OWN RISKS!
+> Hop3x is a stunning failure, is was meant to improve student
+> code learning, but for now it does nothing but improving teacher life.
+> It's not enough stable, it crash all the time! (Because of Java..)
+> This is why I intended to create this tool.
+> When they impose something such as Hop3x, 
+> they had to made sure that it is beyond reproach.
 
-Version Alpha
-(c) TAHRI Ahmed R. @Ousret
+This text you see here is *actually* written in Markdown! To get a feel for Markdown's syntax, type some text into the left window and watch the results in the right.
 
-ZupZupZup Codename L3SPI2015
--
-Required:
-- Python 3.5
-- pip install pyautogui, httplib2, glob, xerox
+### Version
+0.2.1
 
-> If you are on Unix OS, please install pyobjc-core, pyobjc (in that order) to get pyautogui working.
-> You also need Quartz on Unix OS if not already installed.
+### Changelog
+- Darwin OS support
+- Sessions parsing improved
+- File creation bug now fixed
+- Minors fixes
 
-Zup3x is a GUI bot. You can dedicate a VM for your best interest!
-Or run it while you are not using your machine.
+### Tech
 
-# Enable Zup3x with git
-python Zup3x.py -u Hop3xUser -p ****** [Optional: -ugit BitBucketUser -pgit *****]
+Dillinger uses a number of open source projects to work properly:
 
-Known bugs
--
-* Could have some difficulties to find specific file in Hop3x explorer
-* AZERTY keyboard are not recognized on pyautogui with Unix [Working on it]
+* [Python] - Python 3.5 (Windows, Linux and OSX)
+* [Hop3x] - Java-based code editor with tracking
+* [Git] - Git command line support for Windows
 
-How does this actualy work ?
--
+### Installation
 
-1. Place your project(s) at localProjects/ folder
-2. Run Zup3x.py
-3. Relax
+You need Python 3.5 to make this tool working:
 
-You can replace step 1 by providing User/password of your bitbucket account.
+**Mandatory tools**
+```sh
+$ pip install pyautogui, xerox
+```
 
-Every repository (private or not) that begin with "hop3x" prefix will be cloned and updated when changes occurs.
+**If you are on OSX**
+- You'll need to have Quartz installed
+```sh
+$ pip install pyobjc-core
+$ pip install pyobjc
+```
+
+### Development
+
+Want to contribute? Great!
+Open issue(s), spread the word, fork this repository or set us one stars!
+
+### Todos
+
+ - Write Tests
+ - Cleanup code
+ - Optimize
+ - Set it more human, stealth!
+
+License
+----
+
+MIT
+**Free Software, Hell Yeah!**
+
+[//]: # 
+
+
+   [Hop3x]: <http://hop3x.univ-lemans.fr/>
+   [Python]: <https://www.python.org/>
+   [Git]: <https://git-scm.com/download/win>
+
+
