@@ -32,6 +32,7 @@ import logging
 from logging.handlers import RotatingFileHandler
 import difflib
 import shutil
+import zipfile
 
 __author__ = "Ousret"
 __date__ = "$19 sept. 2015 11:15:33$"
@@ -80,6 +81,33 @@ def getHop3xRepo(Username, Password):
     resp, content = API_BB.request("https://api.bitbucket.org/1.0/user/repositories", "GET")
     repoList = json.loads(content.decode("utf-8"))
     return repoList
+
+def extractZip(filename, dest):
+    logger.info('Extracting '+filename+' ..')
+    
+    try:
+        with zipfile.ZipFile(filename, "r") as z:
+            z.extractall(dest)
+    except:
+        logger.critical('Unable to extract '+filename+' !')
+        return False
+    return True
+
+def getHop3x():
+    logger.info('Downloading lastest Hop3x version from hop3x.univ-lemans.fr [...]')
+    DOWNLOAD_HOP3X = httplib2.Http(".cache")
+    resp, content = DOWNLOAD_HOP3X.request("http://hop3x.univ-lemans.fr/Hop3xEtudiant.zip", "GET")
+
+    try:
+        logger.info('Saving binaries to ./Hop3xEtudiant.zip')
+        with open('Hop3xEtudiant.zip', 'wb') as f:
+            f.write(content)
+
+    except:
+        logger.critical('Unable to create Hop3xEdudiant.zip')
+        return False
+
+    return extractZip('Hop3xEtudiant.zip', '')
 
 def mergeFiles(filename1, filename2):
     
@@ -846,6 +874,12 @@ if __name__ == "__main__":
         logger.critical('Hop3x credentials are needed! Unable to use Hop3x !')
         exit()
     
+    #Download Hop3x is not available
+    if (os.path.exists('hop3xEtudiant/') == False):
+        if (getHop3x() == False):
+            logger.critical('Unable to install Hop3x etudiant, Zup3x is unable to continue !')
+            exit()
+
     #Full time job!
     while (True):
         
