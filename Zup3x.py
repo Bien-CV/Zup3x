@@ -628,7 +628,7 @@ def getFileLanguage(FILE_NAME):
 def loadLocalProjects():
     dirCotent = os.listdir("localProjects/")
     projectsList = []
-    
+
     for element in dirCotent:
         if (os.path.isdir('localProjects/'+element) == True):
             projectsList.append(element)
@@ -829,21 +829,9 @@ def getRemoteRepository(bb_user, bb_pass):
                 logger.info('<'+racine['name']+'> is not meant to be cloned.')
         else:
             #Update current copy
-            logger.info('Remove old copy of <'+racine['name']+'> from localProjects/')
-            try:
-                if sys.platform == 'win32':
-                    #subprocess.Popen(['rmdir', 'localProjects/'+racine['name']+'/', '/s', '/q'])
-                    #sys.call('rmdir', '/s', '/q', 'localProjects/'+racine['name'])
-                    os.remove('localProjects/'+racine['name'])
-                else:
-                    sys.call('rm', '-rf', "localProjects/"+racine['name']+"/")
-                
-            except:
-                logger.error('Unable to remove old copy of '+racine['name']+' from localProjects/')
-                return
             logger.info(racine['name']+' is being updated from lastest source available online')
             try:
-                subprocess.Popen(['git', 'clone', 'https://'+bb_user+':'+bb_pass.replace('@', '%40')+'@bitbucket.org/'+bb_user+'/'+racine['name']+'.git', 'localProjects/'+racine['name']])
+                subprocess.Popen(['git', '-C', 'localProjects/'+racine['name'], 'pull', 'https://'+bb_user+':'+bb_pass.replace('@', '%40')+'@bitbucket.org/'+bb_user+'/'+racine['name']+'.git'])
             except:
                 logger.error('Git is not installed on this machine!')
                 return
