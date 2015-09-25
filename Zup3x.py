@@ -626,7 +626,14 @@ def getFileLanguage(FILE_NAME):
         return 'Unknown'
 
 def loadLocalProjects():
-    return os.listdir("localProjects/")
+    dirCotent = os.listdir("localProjects/")
+    projectsList = []
+    
+    for element in dirCotent:
+        if (os.path.isdir('localProjects/'+element) == True):
+            projectsList.append(element)
+    
+    return projectsList
 
 def legacyQuitHop3x():
     manualHotKey(CTRL_SWAP, 'q')
