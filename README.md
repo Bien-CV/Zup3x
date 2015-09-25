@@ -13,18 +13,22 @@ This tool is still under testing, use it at your own risk.
 
 **Forbidden**
 
-    Using this tool without proper sources, you have to use what you made !
+    To use this tool without proper sources, don't steal sources for your own sake..
     Don't try to fool your teacher with foreign sources, exams will eventually take off your mask!
 
-> Hop3x is a stunning failure, is was meant to improve student
-> code learning, but for now it does nothing but improving teacher life.
-> It's not enough stable, it crash all the time! (Because of Java..)
+**Why does Zup3x comes to exist ?**
+
+> Hop3x is a half failure, is was meant to improve student
+> code learning, but for now it does improve teacher life. (And it's good for them of course)
+> It's not enough stable, it crash all the time! (Because of Java.. And code, of course!)
 > This is why I intended to create this tool.
-> When they impose something such as Hop3x, 
-> they had to made sure that it is beyond reproach.
+> The student/client part of Hop3x is not the answer of how to improve code learning
+> My answer is that Hop3x server side must stand as it is, but Hop3x student should be a plugin/deamon process.
+> My position can be debated of course.
+> Hop3x could have a future, but not like this, for now.
 
 ### Version
-0.2.1
+0.2.2
 
 ### Changelog
 - Darwin OS support
@@ -34,10 +38,10 @@ This tool is still under testing, use it at your own risk.
 
 ### Tech
 
-Dillinger uses a number of open source projects to work properly:
+Zup3x uses a number of open source projects to work properly:
 
 * [Python] - Python 3.5 (Windows, Linux and OSX)
-* [Hop3x] - Java-based code editor with tracking
+* [Hop3x] - Java-based code editor with tracking (Not very open, but..)
 * [Git] - Git command line support for Windows
 
 ### Installation
@@ -54,6 +58,10 @@ $ pip install pyautogui, xerox
 ```sh
 $ pip install pyobjc-core
 $ pip install pyobjc
+```
+**Zup3x command line**
+```sh
+$ python Zup3x.py -u [Hop3x username] -p [Hop3x password]
 ```
 
 ### Development
@@ -80,5 +88,3 @@ MIT
    [Hop3x]: <http://hop3x.univ-lemans.fr/>
    [Python]: <https://www.python.org/>
    [Git]: <https://git-scm.com/download/win>
-
-
