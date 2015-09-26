@@ -50,7 +50,8 @@ You need Python 3.5 to make this tool working:
 
 **Mandatory tools**
 ```sh
-$ pip install pyautogui, xerox
+$ pip install pyautogui
+$ pip install httplib2
 ```
 
 **If you are on OSX**
@@ -63,6 +64,11 @@ $ pip install pyobjc
 ```sh
 $ python Zup3x.py -u [Hop3x username] -p [Hop3x password]
 ```
+
+- [-u] Hop3x username
+- [-p] Hop3x password
+- [-ugit] Bitbucket username
+- [-pgit] Bitbucket password
 
 ### Development
 
