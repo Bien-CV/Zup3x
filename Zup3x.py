@@ -5,7 +5,7 @@
     Zup3x Client
     Description: Hop3x Assistant Bot
     Author(s): TAHRI Ahmed
-    Version: Omega
+    Version: Delta (0.2.2)
     Notice: 
     
         This stand only for educational purposes, 
@@ -33,11 +33,12 @@ from logging.handlers import RotatingFileHandler
 import difflib
 import shutil
 import zipfile
+import signal
 
 __author__ = "Ousret"
 __date__ = "$19 sept. 2015 11:15:33$"
 
-__VERSION__ = '0.1o' #Local Zup3x revision
+__VERSION__ = '0.2.2' #Local Zup3x revision
 ZUP3X_ROOT_PATH = 'java -Xmx512m -jar hop3xEtudiant/lib/Hop3xEtudiant.jar'
 
 SCREEN_X, SCREEN_Y = pyautogui.size()
@@ -74,6 +75,20 @@ if (sys.platform == 'darwin'):
 else:
     CTRL_SWAP = 'ctrl'
     STARS_SWAP = 'multiply'
+
+def signalHandle(signal, frame):
+    logger.critical('Zup3x stopped with signal '+signal)
+
+    if (sys.platform == 'win32'):
+        logger.warning('Zup3x is trying to restore keyboard layout after incident.')
+        win32api.LoadKeyboardLayout(originLayout, 1)
+
+    raise Exception('Zup3x can\'t breathe anymore, try to reanimate it!')
+
+if (sys.platform == 'win32'):
+    signal.signal(signal.SIGBREAK, signalHandle)
+else:
+    signal.signal(signal.SIGTERM, signalHandle)
 
 def getHop3xRepo(Username, Password):
     API_BB = httplib2.Http(".cache")
@@ -419,7 +434,7 @@ def isFileCreated(SESSION):
     else:
         return False
 
-def simulatePerfectStudent(BUFFER, FILE_EXTENSION):
+def botWriter(BUFFER, FILE_EXTENSION):
     
     selectEditorZone()
     WhipeAll() #Delete default text provided by Hop3x
@@ -428,11 +443,6 @@ def simulatePerfectStudent(BUFFER, FILE_EXTENSION):
     bufSize = len(BUFFER)
     EnableCodeC = False
     MakefileCode = False
-    
-    Win32Host = False
-    
-    if sys.platform ==  'win32':
-        Win32Host = True
     
     if (FILE_EXTENSION == 'C' or FILE_EXTENSION == 'H'):
         EnableCodeC = True
@@ -482,12 +492,6 @@ def simulatePerfectStudent(BUFFER, FILE_EXTENSION):
         elif(c == ' '):
             pyautogui.press('space')
             time.sleep(0.2)
-        elif(c == '\\' and Win32Host == True):
-            PasteBuffer('\\')
-            time.sleep(0.2)
-        elif(c == '|' and Win32Host == True):
-            PasteBuffer('|')
-            time.sleep(0.2)
         elif(c == '/'):
             
             if (C_CommentSlashAsterix == True and pos-1 >= 0 and BUFFER[pos-1] == '*'):
@@ -501,49 +505,12 @@ def simulatePerfectStudent(BUFFER, FILE_EXTENSION):
             else:
                 pyautogui.press('/')
                 time.sleep(0.2)
-                
-        elif(c == '_' and Win32Host == True):
-            PasteBuffer('_')
-            time.sleep(0.2)
-        elif(c == '[' and Win32Host == True):
-            PasteBuffer('[')
-            time.sleep(0.2)
-        elif(c == ']' and Win32Host == True):
-            PasteBuffer(']')
-            time.sleep(0.2)
-        elif(c == '(' and Win32Host == True):
-            PasteBuffer('(')
-            time.sleep(0.2)
-        elif(c == ')' and Win32Host == True):
-            PasteBuffer(')')
-            time.sleep(0.2)
-        elif(c == '{' and Win32Host == True):
-            PasteBuffer('{')
-            time.sleep(0.2)
         elif(c == '}'): 
             if (EnableCodeC == True and OneLineAcol == False):
                 pyautogui.press('down')
                 pyautogui.press('enter')
             else:
                 PasteBuffer('}')
-            time.sleep(0.2)
-        elif(c == '"' and Win32Host == True):
-            PasteBuffer('"')
-            time.sleep(0.2)
-        elif(c == '#' and Win32Host == True):
-            PasteBuffer('#')
-            time.sleep(0.2)
-        elif(c == '<' and Win32Host == True):
-            PasteBuffer('<')
-            time.sleep(0.2)
-        elif(c == '!' and Win32Host == True):
-            PasteBuffer('!')
-            time.sleep(0.2)
-        elif(c == '&' and Win32Host == True):
-            PasteBuffer('&')
-            time.sleep(0.2)
-        elif(c == ':' and Win32Host == True):
-            PasteBuffer(':')
             time.sleep(0.2)
         elif(c == '*'):
             
@@ -560,7 +527,7 @@ def simulatePerfectStudent(BUFFER, FILE_EXTENSION):
             pyautogui.press('e')
             time.sleep(0.2)
         else:
-            pyautogui.typewrite(c, interval=0.08)
+            pyautogui.typewrite(c, interval=0.2)
             
         pos += 1
 
@@ -779,7 +746,7 @@ def Zup3x_CORE(username, password, Hop3x_Instance):
                         data=myfile.read()
 
                     #Start writing code..!
-                    simulatePerfectStudent(data, getFileLanguage(file))
+                    botWriter(data, getFileLanguage(file))
                     #Save current state
                     saveCurrentFile()
                     logger.info('<'+file+'> is now up to date and saved with Hop3x.')
@@ -799,7 +766,7 @@ def Zup3x_CORE(username, password, Hop3x_Instance):
                                 data=myfile.read()
 
                             #Start writing code..!
-                            simulatePerfectStudent(data, getFileLanguage(file))
+                            botWriter(data, getFileLanguage(file))
                             
                         else:
                             logger.warning('Unable to find ST/IT event that match file target, Zup3x is unable to edit <'+file+'>')
@@ -874,6 +841,10 @@ if __name__ == "__main__":
         if (getHop3x() == False):
             logger.critical('Unable to install Hop3x etudiant, Zup3x is unable to continue !')
             exit()
+
+    #Ask pyautogui to switch to azerty layout
+    logger.info('Set bot keyboard layout as azerty')
+    pyautogui.setKeyboardLayout('azerty')
 
     #Full time job!
     while (True):
