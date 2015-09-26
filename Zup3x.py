@@ -5,14 +5,14 @@
     Zup3x Client
     Description: Hop3x Assistant Bot
     Author(s): TAHRI Ahmed
-    Version: Delta (0.2.2)
+    Version: Delta (0.2.3)
     Notice: 
     
         This stand only for educational purposes, 
         we won't be held responsible for any damage or accident 
         you made with this tool.
     
-    dep. pip install pyautogui, httplib2, xerox
+    dep. pip install pyautogui, httplib2
 '''
 
 import subprocess 
@@ -23,7 +23,7 @@ import httplib2
 import json 
 import time
 import sys
-import xerox
+#import xerox
 import xml.etree.cElementTree as ET
 import math
 from datetime import datetime
@@ -262,7 +262,7 @@ def createNewFile(FILENAME, PROJECT_TYPE, TYPE):
 
 #Only meant for Windows OS (Fix for thoses who possese azerty keyboard)
 def PasteBuffer(BUFFER):
-    xerox.copy(BUFFER)
+    #xerox.copy(BUFFER)
     manualHotKey(CTRL_SWAP, 'v')
     
 def WhipeAll():
@@ -510,7 +510,7 @@ def botWriter(BUFFER, FILE_EXTENSION):
                 pyautogui.press('down')
                 pyautogui.press('enter')
             else:
-                PasteBuffer('}')
+                pyautogui.press('}')
             time.sleep(0.2)
         elif(c == '*'):
             
@@ -843,8 +843,11 @@ if __name__ == "__main__":
             exit()
 
     #Ask pyautogui to switch to azerty layout
-    logger.info('Set bot keyboard layout as azerty')
-    pyautogui.setKeyboardLayout('azerty')
+    logger.info('Set pyautogui keyboard layout as azerty')
+    try:
+        pyautogui.setKeyboardLayout('azerty')
+    except:
+        logger.warning('Cannot set keyboard layout, you may want to change it to QWERTY !')
 
     #Full time job!
     while (True):
