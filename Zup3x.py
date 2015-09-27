@@ -374,7 +374,8 @@ def getActiveSession():
 
                 if (len(root) > 0):
                     lAttrib = root[-1].attrib
-                    if (lAttrib['K'] == 'CONNECTION'):
+                    #Search for event that aren't too old.
+                    if (lAttrib['K'] == 'CONNECTION' and (((int(time.time()*1000) - int(lAttrib['T']))/1000) < 60)):
                         return {'client':client, 'session':session}
             else:
                 logger.warning('Unable to get lastest trace buffer')
@@ -556,7 +557,9 @@ def botWriter(BUFFER, FILE_EXTENSION):
     bufSize = len(BUFFER)
     EnableCodeC = False
     MakefileCode = False
-    
+    speedWriter = 0.2
+    lastspeedUpdate = 0
+
     if (FILE_EXTENSION == 'C' or FILE_EXTENSION == 'H'):
         EnableCodeC = True
     elif(FILE_EXTENSION == 'Makefile'):
@@ -596,35 +599,47 @@ def botWriter(BUFFER, FILE_EXTENSION):
                 pyautogui.press('backspace')
                 MakeBackSlash = False
                 FixUnknownSpaceAfterMultipleLineComment = False
-            time.sleep(0.5)
+            time.sleep(speedWriter)
         elif(c == '\t'):
             if (EnableCodeC == False and MakefileCode == False):
                 pyautogui.press('\t')
-                time.sleep(0.5)
+                time.sleep(speedWriter)
                 MakeBackSlash = True
         elif(c == ' '):
             pyautogui.press('space')
-            time.sleep(0.2)
+            time.sleep(speedWriter)
         elif(c == '/'):
             
             if (C_CommentSlashAsterix == True and pos-1 >= 0 and BUFFER[pos-1] == '*'):
                 C_CommentSlashAsterix = False
                 if (FixMultipleLineComment == False):
                     pyautogui.press('/')
-                    time.sleep(0.2)
+                    time.sleep(speedWriter)
                 else:
                     FixMultipleLineComment = False
                     FixUnknownSpaceAfterMultipleLineComment = True
             else:
                 pyautogui.press('/')
-                time.sleep(0.2)
+                time.sleep(speedWriter)
+        elif(c == '{'):
+
+            #Take a rest if needed
+            if ((random.randrange(int((pos/bufSize) *100), 100)) > 98):
+                speedWriter = random.randrange(120, 600)
+                if speedWriter < 340:
+                    logger.info('Your assistant need to take a pee, let me '+str(speedWriter)+' sec. I\'ll be back !')
+                else:
+                    logger.info('Your assistant need to take a nap for '+str(speedWriter)+' sec. I\'ll be back !')
+
+            pyautogui.press('{')
+            time.sleep(speedWriter)
         elif(c == '}'): 
             if (EnableCodeC == True and OneLineAcol == False):
                 pyautogui.press('down')
                 pyautogui.press('enter')
             else:
                 pyautogui.press('}')
-            time.sleep(0.2)
+            time.sleep(speedWriter)
         elif(c == '*'):
             
             if (FixMultipleLineComment == True and pos+1 < bufSize and BUFFER[pos+1] == '/'):
@@ -635,14 +650,28 @@ def botWriter(BUFFER, FILE_EXTENSION):
                     pass
                 else:
                     pyautogui.press(STARS_SWAP)
-                    time.sleep(0.2)
+                    time.sleep(speedWriter)
         elif(c == '\xc3'):  
             pyautogui.press('e')
-            time.sleep(0.2)
+            time.sleep(speedWriter)
         else:
-            pyautogui.typewrite(c, interval=0.2)
-            
+            pyautogui.typewrite(c, interval=speedWriter)
+        
+        #Simulate human variations for typing.
+        if (pos+1 < bufSize and BUFFER[pos] == BUFFER[pos+1]):
+            speedWriter = 0.09
+        elif (lastspeedUpdate+random.randrange(1, 25) == pos):
+            lastspeedUpdate = pos
+            speedWriter = random.uniform(0.15, 0.3)
+        elif(speedWriter == 0.09):
+            lastspeedUpdate = pos
+            speedWriter = random.uniform(0.15, 0.3)
+        elif(speedWriter >= 120):
+            logger.info('This was refreshing. Thank you for letting me take a nap/rest.')
+            speedWriter = random.uniform(0.15, 0.3)
+
         pos += 1
+        
 
 def setHop3xLogin(username, password):
     pyautogui.typewrite(username, interval=0.2)
@@ -744,7 +773,6 @@ def getArgValue(target, argv):
 def searchFileExplorer(SESSION, FILE_TARGET, FILES_LIST, PROJECT_TARGET):
     
     declaredFiles = getDeclaredFilesProject(SESSION, PROJECT_TARGET)
-    logger.info(str(declaredFiles))
 
     #Test current file
     selectEditorZone()
@@ -830,10 +858,10 @@ def searchFileExplorer(SESSION, FILE_TARGET, FILES_LIST, PROJECT_TARGET):
 
         cfile = getFileHandled(SESSION)
         if (declaredFiles.index(cfile) < declaredFiles.index(FILE_TARGET)):
-            for i in range(math.fabs(declaredFiles.index(cfile)-declaredFiles.index(FILE_TARGET))):
+            for i in range(int(math.fabs(declaredFiles.index(cfile)-declaredFiles.index(FILE_TARGET)))):
                 pyautogui.press('down')
         else:
-            for i in range(math.fabs(declaredFiles.index(cfile)-declaredFiles.index(FILE_TARGET))):
+            for i in range(int(math.fabs(declaredFiles.index(cfile)-declaredFiles.index(FILE_TARGET)))):
                 pyautogui.press('up')
 
         selectEditorZone()
@@ -950,7 +978,7 @@ def Zup3x_CORE(username, password, Hop3x_Instance):
 
         deletedFiles = []
         #List of element to delete from Hop3x
-        if (targetSession != 'Unknown'):
+        if (targetSession != 'Unknown' and declaredFiles != False and len(declaredFiles) > 0):
             for rfile in declaredFiles:
                 if rfile not in files:
                     deletedFiles.append(rfile)
