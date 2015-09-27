@@ -300,6 +300,12 @@ def selectEditorZone():
     pyautogui.moveTo(int(SCREEN_X/2), int(SCREEN_Y/2), 2)
     pyautogui.click()
 
+def findXMLElement(TREE, TAG_TARGET):
+    for child in TREE:
+        if (child.tag == TAG_TARGET):
+            return child.text
+    return None
+
 def deleteXMLTrace(SESSION):
     
     CLIENT_NAME = os.listdir("Hop3xEtudiant/data/trace/")
@@ -377,6 +383,26 @@ def getActiveSession():
     logger.warning('Unable to get current active session')
     return None
 
+def getFileHandled(SESSION):
+    data = getLastestTraceBuffer(SESSION)
+    if (data == False):
+        logger.warning('Unable to get lastest XML trace from trace folder !')
+        return False
+    
+    tree = ET.ElementTree(ET.fromstring(data))
+    root = tree.getroot()
+    
+    if (len(root) == 0):
+        logger.error('Enable to parse XML, tree is empty, see trace file')
+        return False
+    
+    lAttrib = root[-1].attrib
+
+    if (lAttrib['K'] == 'IT' or lAttrib['K'] == 'ST' or lAttrib == 'AF'):
+        return findXMLElement(root[-1], 'F')
+    else:
+        return False
+
 def checkFileHandled(SESSION, FILE_TARGET):
     
     data = getLastestTraceBuffer(SESSION)
@@ -392,12 +418,32 @@ def checkFileHandled(SESSION, FILE_TARGET):
         return False
     
     lAttrib = root[-1].attrib
-    
-    if ((lAttrib['K'] == 'IT'  and str(root[-1][2].text) == FILE_TARGET) or (lAttrib['K'] == 'ST' and str(root[-1][3].text) == FILE_TARGET)):
+
+    if ((lAttrib['K'] == 'IT' or lAttrib['K'] == 'ST' or lAttrib == 'AF')  and findXMLElement(root[-1], 'F') == FILE_TARGET):
         logger.info(lAttrib['K']+' event on <'+FILE_TARGET+'> detected using XML parser.')
         return True
     else:
         return False
+
+def getCurrentProject(SESSION):
+    data = getLastestTraceBuffer(SESSION)
+    if (data == False):
+        logger.warning('Unable to get lastest XML trace from trace folder !')
+        return False
+    
+    tree = ET.ElementTree(ET.fromstring(data))
+    root = tree.getroot()
+    
+    if (len(root) == 0):
+        logger.error('Enable to parse XML, tree is empty, see trace file')
+        return False
+    
+    lAttrib = root[-1].attrib
+    
+    if (lAttrib['K'] == 'IT' or lAttrib['K'] == 'ST'):
+        return findXMLElement(root[-1], 'P')
+    else:
+        return 'Unknown'
 
 def isClientInitialized(SESSION):
     
@@ -668,6 +714,16 @@ def loadLocalProjects():
     
     return projectsList
 
+def loadWorkSpaceProjects(SESSION):
+    dirCotent = os.listdir("hop3xEtudiant/data/workspace/"+SESSION+"/")
+    projectsList = []
+
+    for element in dirCotent:
+        if (os.path.isdir('localProjects/'+element) == True):
+            projectsList.append(element)
+    
+    return projectsList
+
 def legacyQuitHop3x():
     manualHotKey(CTRL_SWAP, 'q')
     time.sleep(1) #Let messagebox appear on the screen
@@ -695,25 +751,91 @@ def searchFileExplorer(SESSION, FILE_TARGET, FILES_LIST, PROJECT_TARGET):
     pyautogui.press('space')
     time.sleep(1)
     pyautogui.press('backspace')
-    if (checkFileHandled(SESSION, FILE_TARGET) == True):
-        return True
-    #Use smart position
 
-    selectExplorerZone()
+    #Verify if we are on the right project
+    currentProject = getCurrentProject(SESSION)
+    projectsList = loadWorkSpaceProjects(SESSION)
+
+    if (currentProject != PROJECT_TARGET):
+        logger.info('Using smart move with Hop3x explorer to find <'+FILE_TARGET+'> on <'+SESSION+'>')
+        for i in range(len(projectsList)+1):
+            selectExplorerZone()
+
+            #If not on the target project, we move!
+            currentDeclaredFiles = getDeclaredFilesProject(SESSION, currentProject)
+            if (currentDeclaredFiles == False):
+                logger.error('Unable to get declared file(s) for <'+currentProject+'> in <'+SESSION+'>')
+                return False
+            logger.info('Project <'+currentProject+'> has '+str(len(currentDeclaredFiles)+1)+' file(s), moving..')
+
+            if (currentProject < PROJECT_TARGET): #We go down!
+                for i in range(int(math.fabs(currentDeclaredFiles.index(getFileHandled(SESSION)) - currentDeclaredFiles.index(currentDeclaredFiles[-1]))) + 1):
+                    pyautogui.press('down')
+                    time.sleep(0.2)
+            else: #Go up!
+                for i in range(int(math.fabs(currentDeclaredFiles.index(getFileHandled(SESSION)) - currentDeclaredFiles.index(currentDeclaredFiles[-1]))) + 2):
+                    pyautogui.press('up')
+                    time.sleep(0.2)
+
+            #Test if we are on the target project
+            selectEditorZone()
+            time.sleep(1)
+            pyautogui.press('space')
+            time.sleep(1)
+            pyautogui.press('backspace')
+            time.sleep(2)
+
+            if (getCurrentProject(SESSION) == currentProject):
+                #If project was minimized..
+                selectExplorerZone()
+                if (currentProject < PROJECT_TARGET):
+                    pyautogui.press('down')
+                    time.sleep(0.2)
+
+                selectEditorZone()
+                time.sleep(1)
+                pyautogui.press('space')
+                time.sleep(1)
+                pyautogui.press('backspace')
+                time.sleep(2)
+
+            #Verify if we are on the right project
+            currentProject = getCurrentProject(SESSION)
+            if (currentProject == PROJECT_TARGET):
+                break
+            
+
+    #It can't be! Something wrong.. or missed!
+    if (currentProject != PROJECT_TARGET):
+        logger.error('Unable to find project <'+PROJECT_TARGET+'> on Hop3x explorer, our logic failed..')
+        return False
+
+    #If we are actually on the target file
+    if (getFileHandled(SESSION) == FILE_TARGET):
+        return True
     
-    #Be at the top of explorer selection
-    for i in range(len(FILES_LIST)):
-        pyautogui.press('up')
-    
-    for file in FILES_LIST:
+    for i in range(len(declaredFiles)):
         
-        pyautogui.press('down')
+        selectExplorerZone()
+
+        cfile = getFileHandled(SESSION)
+        if (declaredFiles.index(cfile) < declaredFiles.index(FILE_TARGET)):
+            for i in range(math.fabs(declaredFiles.index(cfile)-declaredFiles.index(FILE_TARGET))):
+                pyautogui.press('down')
+        else:
+            for i in range(math.fabs(declaredFiles.index(cfile)-declaredFiles.index(FILE_TARGET))):
+                pyautogui.press('up')
+
         selectEditorZone()
+        time.sleep(1)
         pyautogui.press('space') #Stealth char
         time.sleep(1)
         pyautogui.press('backspace')
-        if (checkFileHandled(SESSION, FILE_TARGET) == True):
+        time.sleep(2)
+        #Check if we are on the target file
+        if (getFileHandled(SESSION) == FILE_TARGET):
             return True
+        #If not, well, let's continue..
         selectExplorerZone()
     
     return False
@@ -943,8 +1065,7 @@ if __name__ == "__main__":
     
     if len(sys.argv) < 5:
         print ('usage: Zup3x.py -u [Hop3xUser] -p [Hop3xPass] [Optional: -ugit [BitBucketUser] -pgit [BitBucketPass] -sID [SessionID]]')
-        logger.info('No arguments are provided, sys.argv is empty.')
-        logger.info('Starting GUI configuration')
+        logger.info('Starting GUI configuration..')
         
         username = pyautogui.prompt(text='Please provide Hop3x username', title='Zup3x Login' , default='')
         password = pyautogui.password(text='Please type your password', title='Zup3x Login', default='', mask='*')
