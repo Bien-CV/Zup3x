@@ -326,7 +326,6 @@ def getDeclaredFilesHop3x(XMLTREE):
     root = tree.getroot()
     
     if (len(root) == 0):
-        logger.error('Enable to parse XML, tree is empty, see <'+XMLTREE+'>')
         return False
     
     declaredFiles = []
@@ -719,9 +718,10 @@ def loadWorkSpaceProjects(SESSION):
     projectsList = []
 
     for element in dirCotent:
-        if (os.path.isdir('localProjects/'+element) == True):
+        if (os.path.isdir('hop3xEtudiant/data/workspace/'+SESSION+'/'+element) == True):
             projectsList.append(element)
-    
+
+    projectsList.sort()
     return projectsList
 
 def legacyQuitHop3x():
@@ -769,11 +769,21 @@ def searchFileExplorer(SESSION, FILE_TARGET, FILES_LIST, PROJECT_TARGET):
             logger.info('Project <'+currentProject+'> has '+str(len(currentDeclaredFiles)+1)+' file(s), moving..')
 
             if (currentProject < PROJECT_TARGET): #We go down!
-                for i in range(int(math.fabs(currentDeclaredFiles.index(getFileHandled(SESSION)) - currentDeclaredFiles.index(currentDeclaredFiles[-1]))) + 1):
+                print (str(projectsList))
+                if ((projectsList.index(currentProject)+1 <= len(projectsList)) and (getDeclaredFilesProject(SESSION, projectsList[projectsList.index(currentProject)+1]) == False)):
+                    offset = 1
+                else:
+                    offset = 0
+                for i in range(int(math.fabs(currentDeclaredFiles.index(getFileHandled(SESSION)) - currentDeclaredFiles.index(currentDeclaredFiles[-1]))) + 2 + offset):
                     pyautogui.press('down')
                     time.sleep(0.2)
             else: #Go up!
-                for i in range(int(math.fabs(currentDeclaredFiles.index(getFileHandled(SESSION)) - currentDeclaredFiles.index(currentDeclaredFiles[-1]))) + 2):
+                
+                if ((projectsList.index(currentProject)-1 >= 0) and (getDeclaredFilesProject(SESSION, projectsList[projectsList.index(currentProject)-1]) == False)):
+                    offset = 1
+                else:
+                    offset = 0
+                for i in range(int(math.fabs(currentDeclaredFiles.index(getFileHandled(SESSION)) - currentDeclaredFiles.index(currentDeclaredFiles[-1]))) + 1 + offset):
                     pyautogui.press('up')
                     time.sleep(0.2)
 
