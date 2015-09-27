@@ -482,6 +482,26 @@ def isFileCreated(SESSION):
     else:
         return False
 
+def isFileDeleted(SESSION):
+    data = getLastestTraceBuffer(SESSION)
+    if (data == False):
+        logger.warning('Unable to get lastest XML trace from trace folder !')
+        return False
+    
+    tree = ET.ElementTree(ET.fromstring(data))
+    root = tree.getroot()
+    
+    if (len(root) == 0):
+        logger.error('Enable to parse XML, tree is empty, see trace file')
+        return False
+    #Fix when Hop3x insert default code with new file
+    lAttrib = root[-1].attrib
+    
+    if (lAttrib['K'] == 'SF'):
+        return True
+    else:
+        return False
+
 def botWriter(BUFFER, FILE_EXTENSION):
     
     selectEditorZone()
@@ -794,8 +814,41 @@ def Zup3x_CORE(username, password, Hop3x_Instance):
             logger.warning('There\'s no file to work on with <'+project+'>')
             continue
         
-        logger.info('File(s) to process; '+str(files))
+        logger.info('File(s) to process = '+str(files))
 
+        deletedFiles = []
+        #List of element to delete from Hop3x
+        if (targetSession != 'Unknown'):
+            for rfile in declaredFiles:
+                if rfile not in files:
+                    deletedFiles.append(rfile)
+
+        #Part were we delete file that aren't needed anymore..!
+        if (len(deletedFiles) > 0):
+            logger.info('File(s) to delete = '+str(deletedFiles))
+
+            for rfile in deletedFiles:
+                logger.info('Zup3x is trying to delete <'+rfile+'> from Hop3x.')
+                if (searchFileExplorer(currentSession['session'], rfile, declaredFiles, project) == True):
+                    deleteCurrentFile()
+                    time.sleep(2)
+                    for i in range(allowFailure):
+                        deleteStatus = isFileDeleted(currentSession['session'])
+                        if (deleteStatus == False):
+                            logger.warning('Unable to find <SF> event, file isn\'t deleted yet, waiting..')
+                            time.sleep(15)
+                        else:
+                            break
+
+                    if (deleteStatus == False):
+                        logger.error('Unable to find <SF> event, this file could not be deleted, what a shame..!')
+                    else:
+                        logger.info('<'+rfile+'> has been deleted from <'+currentSession['session']+'>')
+
+                else:
+                    logger.error('Unable to delete <'+rfile+'> from Hop3x, file not found !')
+
+        #Part were we edit files or create new ones
         for cfile in files:
             #Check file
             if (os.path.isdir("localProjects/"+project+"/"+cfile) == False):
