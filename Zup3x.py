@@ -34,6 +34,10 @@ import difflib
 import shutil
 import zipfile
 import signal
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+from email.mime.application import MIMEApplication
 
 __author__ = "Ousret"
 __date__ = "$19 sept. 2015 11:15:33$"
@@ -71,6 +75,8 @@ logger.addHandler(stream_handler)
 
 allowFailure = 6
 
+notifyStats = {'projectCreated':0, 'fileCreated':0, 'fileModified':0, 'fileDeleted':0, 'error':0, 'warning': 0, 'session':'Unknown', 'worktime': 0, 'nextIteration':0 }
+
 if (sys.platform == 'darwin'):
     CTRL_SWAP = 'command'
     STARS_SWAP = '*'
@@ -91,6 +97,47 @@ if (sys.platform == 'win32'):
     signal.signal(signal.SIGBREAK, signalHandle)
 else:
     signal.signal(signal.SIGTERM, signalHandle)
+
+#GMail Notification zup3xbot@gmail.com
+class Notify:
+    
+    def __init__(self, usr, password):
+        self.username = usr
+        self.password = password
+        
+    def send(self, title, message):
+
+        AVAILABLE_LOGS = sorted(glob.glob("logs/" + "*.log"), key=os.path.getctime)
+
+        server = smtplib.SMTP('smtp.gmail.com:587')
+        server.ehlo()
+        server.starttls()
+        server.ehlo()
+        try:
+            server.login(self.username, self.password)
+        except:
+            logger.error('You need to activate low security level application on GMail for Zup3x!')
+            return
+        fromaddr = self.username + "@gmail.com"
+        toaddr = self.username + "@gmail.com"
+        sub = title
+        
+        msg = MIMEMultipart()
+        msg['From'] = fromaddr
+        msg['To'] = toaddr
+        msg['Subject'] = sub  
+        msg.attach(MIMEText(message, 'plain'))
+        if (len(AVAILABLE_LOGS) > 0):
+            try:
+                with open(AVAILABLE_LOGS[-1], "rb") as fic:
+                    msgLog = MIMEApplication(fic.read(), 'log')
+                    msgLog.add_header('Content-Disposition', 'attachment', filename=os.path.basename(AVAILABLE_LOGS[-1]))
+                    msg.attach(msgLog)
+            except:
+                logger.error('Unable to attach <'+afile+'> for GMail notification')
+
+        server.sendmail(fromaddr,toaddr,msg.as_string())
+        server.quit()
 
 def getHop3xRepo(Username, Password):
     API_BB = httplib2.Http(".cache")
@@ -902,6 +949,7 @@ def Zup3x_CORE(username, password, Hop3x_Instance):
     if (len(SESSIONS) == 0):
         logger.critical('There\'s no session available, something wrong!')
         Hop3x_Instance.terminate()
+        notifyStats['error'] += 1
         return -1
     
     #Tolerance
@@ -911,6 +959,7 @@ def Zup3x_CORE(username, password, Hop3x_Instance):
 
         if (currentSession is None):
             logger.warning('Unable to find any <CONNECTION> event on Hop3x XML Trace, trying again..')
+            notifyStats['error'] += 1
             time.sleep(10)
         else:
             break
@@ -918,6 +967,7 @@ def Zup3x_CORE(username, password, Hop3x_Instance):
     if (currentSession is None):
         logger.critical('Zup3x failed to initialize Hop3x, user/mdp may be wrong!')
         Hop3x_Instance.terminate()
+        notifyStats['error'] += 1
         return -1
 
     logger.info('Zup3x is binded to <'+currentSession['client']+'> with session <'+currentSession['session']+'>')
@@ -951,6 +1001,7 @@ def Zup3x_CORE(username, password, Hop3x_Instance):
                 creationStatus = isProjectCreated(currentSession['session'])
                 if (creationStatus == False):
                     logger.warning('Unable to find <AP> event, project isn\'t created yet, waiting..')
+                    notifyStats['warning'] += 1
                     time.sleep(15)
                 else:
                     break;
@@ -959,10 +1010,12 @@ def Zup3x_CORE(username, password, Hop3x_Instance):
             if (creationStatus == False):
                 logger.critical('Unable to find <AP> event, Hop3x haven\'t created our project. What a shame!')
                 Hop3x_Instance.terminate()
+                notifyStats['error'] += 1
                 return -3
             else:
                 #targetSession = getTargetSession(SESSIONS, project)
                 logger.info('Project <'+project+'> has been created in session ['+currentSession['session']+']')
+                notifyStats['projectCreated'] += 1
 
         else:
             logger.info('Hop3x does have <'+project+'> in his local workspace, no need to create.')
@@ -972,6 +1025,7 @@ def Zup3x_CORE(username, password, Hop3x_Instance):
         files = os.listdir("localProjects/"+project)
         if (len(files) == 0):
             logger.warning('There\'s no file to work on with <'+project+'>')
+            notifyStats['warning'] += 1
             continue
         
         logger.info('File(s) to process = '+str(files))
@@ -996,17 +1050,21 @@ def Zup3x_CORE(username, password, Hop3x_Instance):
                         deleteStatus = isFileDeleted(currentSession['session'])
                         if (deleteStatus == False):
                             logger.warning('Unable to find <SF> event, file isn\'t deleted yet, waiting..')
+                            notifyStats['warning'] += 1
                             time.sleep(15)
                         else:
                             break
 
                     if (deleteStatus == False):
                         logger.error('Unable to find <SF> event, this file could not be deleted, what a shame..!')
+                        notifyStats['error'] += 1
                     else:
                         logger.info('<'+rfile+'> has been deleted from <'+currentSession['session']+'>')
+                        notifyStats['deletedFiles'] += 1
 
                 else:
                     logger.error('Unable to delete <'+rfile+'> from Hop3x, file not found !')
+                    notifyStats['error'] += 1
 
         #Part were we edit files or create new ones
         for cfile in files:
@@ -1023,6 +1081,7 @@ def Zup3x_CORE(username, password, Hop3x_Instance):
                         creationStatus = isFileCreated(currentSession['session'])
                         if (creationStatus == False):
                             logger.warning('Unable to find <AF> event, file isn\'t created yet, waiting..')
+                            notifyStats['warning'] += 1
                             time.sleep(15)
                         else:
                             break;
@@ -1030,10 +1089,12 @@ def Zup3x_CORE(username, password, Hop3x_Instance):
 
                     if (creationStatus == False):
                         logger.critical('Unable to find <AF> event, Hop3x haven\'t created our file <'+cfile+'>. What a shame!')
+                        notifyStats['error'] += 1
                         Hop3x_Instance.terminate()
                         return -4
                     else:
                         logger.info('<'+cfile+'> has been created on project <'+project+'> with session <'+currentSession['session']+'>')
+                        notifyStats['fileCreated'] += 1
                         
                     #Create buffer with target file.
                     with open ("localProjects/"+project+"/"+cfile, "r") as myfile:
@@ -1061,14 +1122,16 @@ def Zup3x_CORE(username, password, Hop3x_Instance):
 
                             #Start writing code..!
                             botWriter(data, getFileLanguage(cfile))
-                            
+                            notifyStats['fileModified'] += 1
                         else:
-                            logger.warning('Unable to find ST/IT event that match file target, Zup3x is unable to edit <'+cfile+'>')
+                            logger.error('Unable to find ST/IT event that match file target, Zup3x is unable to edit <'+cfile+'>')
+                            notifyStats['error'] += 1
                     else:
                         logger.info('<'+cfile+'> is up to date, no need to change anything!')
                     
             else:
                 logger.warning('Unable to process <localProjects/'+project+'/'+cfile+'>, Hop3x does not support dir creation!')
+                notifyStats['warning'] += 1
                 
     return 0
 
@@ -1108,13 +1171,22 @@ if __name__ == "__main__":
         username = pyautogui.prompt(text='Please provide Hop3x username', title='Zup3x Login' , default='')
         password = pyautogui.password(text='Please type your password', title='Zup3x Login', default='', mask='*')
         
-        choise = pyautogui.confirm(text='Do you want to enable git support ?', title='Zup3x Git', buttons=['Yes', 'No'])
+        choise = pyautogui.confirm(text='Do you want to enable git support ?', title='Zup3x', buttons=['Yes', 'No'])
         if (choise == 'Yes'):
-            bb_user = pyautogui.prompt(text='Please provide BitBucket username', title='Bitbucket login' , default='')
-            bb_pass = pyautogui.password(text='Please type your password', title='Bitbucket login', default='', mask='*')
+            bb_user = pyautogui.prompt(text='Please provide BitBucket username', title='Bitbucket' , default='')
+            bb_pass = pyautogui.password(text='Please type your password', title='Bitbucket', default='', mask='*')
         else:
             bb_user = None
             bb_pass = None
+
+        choise = pyautogui.confirm(text='Do you want to enable gmail notification', title='GMail', buttons=['Yes', 'No'])
+        if (choise == 'Yes'):
+            NotifyAccount = pyautogui.prompt(text='Please provide GMail username without @gmail.com', title='GMail' , default='')
+            NotifyPassword = pyautogui.password(text='Please type your GMail password', title='GMail', default='', mask='*')
+        else:
+            NotifyAccount = None
+            NotifyPassword = None
+
     else:
         
         username = getArgValue('u', sys.argv)
@@ -1126,6 +1198,9 @@ if __name__ == "__main__":
         sessionID = getArgValue('sID', sys.argv)
 
         keyboardLayout = getArgValue('kl', sys.argv)
+
+        NotifyAccount = getArgValue('nu', sys.argv)
+        NotifyPassword = getArgValue('np', sys.argv)
     
     if (username is None or password is None):
         logger.critical('Hop3x credentials are needed! Unable to use Hop3x !')
@@ -1147,6 +1222,7 @@ if __name__ == "__main__":
     except:
         logger.warning('Cannot set keyboard layout, you may want to change it to QWERTY !')
 
+    notifyHandle = Notify(NotifyAccount, NotifyPassword)
     #Full time job!
     while (True):
         
@@ -1217,7 +1293,22 @@ if __name__ == "__main__":
         
         t2 = datetime.now()
         delta = t2 - t1
-        
+
+        if (NotifyAccount != None and NotifyPassword != None):
+            statResume = '''Zup3x notify by your slave, heum.. I mean assistant!\n\n%i project(s) were created.
+                        \n%i file(s) were created\n%i file(s) were modified\n%i file(s) were deleted\n\n
+                        %i error(s) was faced and got %i warning(s)\n\n\nI attached the lastest log to be sure!''' % (notifyStats['projectCreated'], notifyStats['fileCreated'], notifyStats['fileModified'], notifyStats['fileDeleted'], notifyStats['error'], notifyStats['warning'])
+
+            notifyHandle.send('[Zup3x] Instance ending ('+str(notifyStats['error'])+' error(s), '+str(notifyStats['warning'])+' warning(s))', statResume)
+
         logger.info('Zup3x have worked for '+str(delta.total_seconds())+' sec.')
+
+        #Reset notifyStats
+        notifyStats['projectCreated'] = 0
+        notifyStats['fileCreated'] = 0
+        notifyStats['fileModified'] = 0
+        notifyStats['error'] = 0
+        notifyStats['warning'] = 0
+
         FNULL.close()
         time.sleep(waitNextIter)
