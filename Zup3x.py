@@ -69,6 +69,8 @@ stream_handler.setLevel(logging.DEBUG)
 stream_handler.setFormatter(formatter)
 logger.addHandler(stream_handler)
 
+allowFailure = 6
+
 if (sys.platform == 'darwin'):
     CTRL_SWAP = 'command'
     STARS_SWAP = '*'
@@ -182,6 +184,27 @@ def openContextMenuAssist():
     
 def saveCurrentFile():
     manualHotKey(CTRL_SWAP, 's')
+
+def compileCurrentWork():
+    openContextMenuTools()
+    time.sleep(1)
+    pyautogui.press('enter')
+
+def executeCurrentWork():
+    openContextMenuTools()
+    time.sleep(1)
+    pyautogui.press('down')
+    time.sleep(0.5)
+    pyautogui.press('enter')
+
+def deleteCurrentFile():
+    openContextMenuFile()
+    time.sleep(1)
+    for i in range(3):
+        pyautogui.press('down')
+        time.sleep(0.5)
+
+    pyautogui.press('enter')
 
 def hitTabRange(NB_TIME):
     for i in range(NB_TIME):
@@ -311,10 +334,14 @@ def getDeclaredFilesProject(SESSION, PROJECT_NAME):
     #hop3xEtudiant\data\workspace\2015-Travail-Personnel\TDA-Annexes
     return getDeclaredFilesHop3x('hop3xEtudiant/data/workspace/'+SESSION+'/'+PROJECT_NAME+'/'+PROJECT_NAME+'.xml')
 
-def getLastestTraceBuffer(SESSION):
-    CLIENT_NAME = os.listdir("Hop3xEtudiant/data/trace/")
-    AVAILABLE_TRACE = sorted(glob.glob("Hop3xEtudiant/data/trace/"+CLIENT_NAME[0]+"/"+SESSION+"/" + "*.xml"), key=os.path.getctime)
-    
+def getLastestTraceBuffer(SESSION, CLIENT_NAME = False):
+
+    if (CLIENT_NAME == False):
+        CLIENT_NAME = os.listdir("Hop3xEtudiant/data/trace/")
+        AVAILABLE_TRACE = sorted(glob.glob("Hop3xEtudiant/data/trace/"+CLIENT_NAME[0]+"/"+SESSION+"/" + "*.xml"), key=os.path.getctime)
+    else:
+        AVAILABLE_TRACE = sorted(glob.glob("Hop3xEtudiant/data/trace/"+CLIENT_NAME+"/"+SESSION+"/" + "*.xml"), key=os.path.getctime)
+
     if (len(AVAILABLE_TRACE) == 0):
         return False
     
@@ -326,8 +353,29 @@ def getLastestTraceBuffer(SESSION):
         return False
     
     data += '</TRACE>'
-    
     return data
+
+def getActiveSession():
+    CLIENTS_NAME = os.listdir("Hop3xEtudiant/data/trace/")
+
+    for client in CLIENTS_NAME:
+        SESSIONS_AVAILABLE = os.listdir('Hop3xEtudiant/data/trace/'+client+'/')
+        for session in SESSIONS_AVAILABLE:
+            logger.info('Probing <'+session+'> with <'+client+'>')
+            XMLTrace = getLastestTraceBuffer(session, client)
+            if (XMLTrace != False):
+                tree = ET.ElementTree(ET.fromstring(XMLTrace))
+                root = tree.getroot()
+
+                if (len(root) > 0):
+                    lAttrib = root[-1].attrib
+                    if (lAttrib['K'] == 'CONNECTION'):
+                        return {'client':client, 'session':session}
+            else:
+                logger.warning('Unable to get lastest trace buffer')
+    
+    logger.warning('Unable to get current active session')
+    return None
 
 def checkFileHandled(SESSION, FILE_TARGET):
     
@@ -553,11 +601,9 @@ def getTargetSession(SESSIONS, PROJECT_NAME):
 
     return 'Unknown'
 
-def projectExist(SESSIONS, PROJECT_NAME):
-    
-    for file in SESSIONS:
-        if os.path.exists("Hop3xEtudiant/data/workspace/"+file+"/"+PROJECT_NAME) == True:
-            return True
+def projectExist(SESSION, PROJECT_NAME):
+    if os.path.exists("Hop3xEtudiant/data/workspace/"+SESSION+"/"+PROJECT_NAME) == True:
+        return True
     
     return False
 
@@ -665,11 +711,12 @@ def Zup3x_CORE(username, password, Hop3x_Instance):
     time.sleep( 2 )
     logger.info('GUI Bot: Session automatic selection')
     selectHop3xSession(1)
-    time.sleep( 11 )
+    time.sleep( 25 )
     
     #Get session name by parsing workspace rep.
     logger.info('Parsing available session folder(s)..')
     SESSIONS = parseSession()
+
     logger.info('Session(s) = '+str(SESSIONS))
     
     if (len(SESSIONS) == 0):
@@ -677,12 +724,24 @@ def Zup3x_CORE(username, password, Hop3x_Instance):
         Hop3x_Instance.terminate()
         return -1
     
-    if (isClientInitialized(SESSIONS[0]) == False):
+    #Tolerance
+    for i in range(allowFailure):
+
+        currentSession = getActiveSession()
+
+        if (currentSession is None):
+            logger.warning('Unable to find any <CONNECTION> event on Hop3x XML Trace, trying again..')
+            time.sleep(10)
+        else:
+            break
+    
+    if (currentSession is None):
         logger.critical('Zup3x failed to initialize Hop3x, user/mdp may be wrong!')
-        logger.critical('Unable to find <CONNECTION> event on Hop3x XML Trace')
         Hop3x_Instance.terminate()
         return -1
-    
+
+    logger.info('Zup3x is binded to <'+currentSession['client']+'> with session <'+currentSession['session']+'>')
+
     LOCAL_PROJECTS = loadLocalProjects()
     logger.info('Target project(s) = '+str(LOCAL_PROJECTS))
     
@@ -695,24 +754,35 @@ def Zup3x_CORE(username, password, Hop3x_Instance):
         if (targetSession != 'Unknown'):
             declaredFiles = getDeclaredFilesProject(targetSession, project)
             logger.info('Zup3x has detected project <'+project+'> in session ['+targetSession+'] with: '+str(declaredFiles))
+
         else:
             logger.info('Project <'+project+'> does not seem to be on Hop3x for now..')
 
         #Do we have to create a new project ?
-        if (projectExist(SESSIONS, project) == False):
-            logger.warning('Hop3x does not have any project named <'+project+'>')
-            logger.info('Zup3x is now trying to create a new project in Hop3x')
+        if (projectExist(currentSession['session'], project) == False):
+            logger.warning('This session does not have any project named <'+project+'>')
+            logger.info('Zup3x is now trying to create a new project in <'+currentSession['session']+'>')
             createNewProject(project, 'C+Make')
             time.sleep(2) #Let Hop3x time to create event on XML trace file
-            targetSession = getTargetSession(SESSIONS, project)
+            #targetSession = getTargetSession(SESSIONS, project)
             time.sleep(2)
-            if (isProjectCreated(targetSession) == False):
-                logger.critical('Unable to find <AP> event, Hop3x haven\'t created our project.')
+
+            for i in range(allowFailure):
+                creationStatus = isProjectCreated(currentSession['session'])
+                if (creationStatus == False):
+                    logger.warning('Unable to find <AP> event, project isn\'t created yet, waiting..')
+                    time.sleep(15)
+                else:
+                    break;
+
+            #If we are unable to create a new project
+            if (creationStatus == False):
+                logger.critical('Unable to find <AP> event, Hop3x haven\'t created our project. What a shame!')
                 Hop3x_Instance.terminate()
                 return -3
             else:
-                targetSession = getTargetSession(SESSIONS, project)
-                logger.info('Project <'+project+'> has been created in session ['+targetSession+']')
+                #targetSession = getTargetSession(SESSIONS, project)
+                logger.info('Project <'+project+'> has been created in session ['+currentSession['session']+']')
 
         else:
             logger.info('Hop3x does have <'+project+'> in his local workspace, no need to create.')
@@ -726,55 +796,66 @@ def Zup3x_CORE(username, password, Hop3x_Instance):
         
         logger.info('File(s) to process; '+str(files))
 
-        for file in files:
+        for cfile in files:
             #Check file
-            if (os.path.isdir("localProjects/"+project+"/"+file) == False):
+            if (os.path.isdir("localProjects/"+project+"/"+cfile) == False):
 
-                #Hop3xEtudiant\data\workspace\2015-Travail-Personnel\TDA-Annexes
-                if (os.path.exists("Hop3xEtudiant/data/workspace/"+targetSession+"/"+project+"/"+file) == False):
-                    logger.info('<'+file+'> does not exist in Hop3x local workspace')
-                    logger.info('Zup3x is trying to create <'+file+'> in Hop3x')
-                    createNewFile(getFileNameWithoutExtension(file), 'C', getFileLanguage(file))
+                if (os.path.exists("Hop3xEtudiant/data/workspace/"+currentSession['session']+"/"+project+"/"+cfile) == False):
+                    logger.info('<'+cfile+'> does not exist in Hop3x local workspace')
+                    logger.info('Zup3x is trying to create <'+cfile+'> in Hop3x')
+                    createNewFile(getFileNameWithoutExtension(cfile), 'C', getFileLanguage(cfile))
                     time.sleep(2) #Let Hop3x time to create event on XML trace file
-                    if (isFileCreated(targetSession) == False):
-                        logger.critical('Zup3x is unable to create <'+file+'> on Hop3x, event AF is missing!')
+
+                    for i in range(allowFailure):
+                        creationStatus = isFileCreated(currentSession['session'])
+                        if (creationStatus == False):
+                            logger.warning('Unable to find <AF> event, file isn\'t created yet, waiting..')
+                            time.sleep(15)
+                        else:
+                            break;
+
+
+                    if (creationStatus == False):
+                        logger.critical('Unable to find <AF> event, Hop3x haven\'t created our file <'+cfile+'>. What a shame!')
                         Hop3x_Instance.terminate()
                         return -4
+                    else:
+                        logger.info('<'+cfile+'> has been created on project <'+project+'> with session <'+currentSession['session']+'>')
                         
                     #Create buffer with target file.
-                    with open ("localProjects/"+project+"/"+file, "r") as myfile:
+                    with open ("localProjects/"+project+"/"+cfile, "r") as myfile:
                         data=myfile.read()
 
                     #Start writing code..!
-                    botWriter(data, getFileLanguage(file))
+                    botWriter(data, getFileLanguage(cfile))
                     #Save current state
                     saveCurrentFile()
-                    logger.info('<'+file+'> is now up to date and saved with Hop3x.')
+                    logger.info('<'+cfile+'> is now up to date and saved with Hop3x.')
                 else:
                     #Test if any differences
-                    remoteSize = os.path.getsize("Hop3xEtudiant/data/workspace/"+targetSession+"/"+project+"/"+file)
-                    localSize = os.path.getsize("localProjects/"+project+"/"+file)
+                    remoteSize = os.path.getsize("Hop3xEtudiant/data/workspace/"+currentSession['session']+"/"+project+"/"+cfile)
+                    localSize = os.path.getsize("localProjects/"+project+"/"+cfile)
                     
                     #Non viable methode for changes detections, need to be reviewed!
                     if (math.fabs(remoteSize - localSize) > 50):
-                        logger.info('<'+file+'> is newer than Hop3x local copy, Zup3x gonna update it! DiffSize = ('+str(math.fabs(remoteSize - localSize))+' octet(s))')
+                        logger.info('<'+cfile+'> is newer than Hop3x local copy, Zup3x gonna update it! DiffSize = ('+str(math.fabs(remoteSize - localSize))+' octet(s))')
                         #Search for file in Hop3x explorer
-                        if (searchFileExplorer(targetSession, file, files, project) == True):
-                            logger.info('Zup3x is now ready to edit <'+file+'> in Hop3x editor, event IT/ST match file target!')
+                        if (searchFileExplorer(targetSession, cfile, files, project) == True):
+                            logger.info('Zup3x is now ready to edit <'+cfile+'> in Hop3x editor, event IT/ST match file target!')
                             #Create buffer with target file.
-                            with open ("localProjects/"+project+"/"+file, "r") as myfile:
+                            with open ("localProjects/"+project+"/"+cfile, "r") as myfile:
                                 data=myfile.read()
 
                             #Start writing code..!
-                            botWriter(data, getFileLanguage(file))
+                            botWriter(data, getFileLanguage(cfile))
                             
                         else:
-                            logger.warning('Unable to find ST/IT event that match file target, Zup3x is unable to edit <'+file+'>')
+                            logger.warning('Unable to find ST/IT event that match file target, Zup3x is unable to edit <'+cfile+'>')
                     else:
-                        logger.info('<'+file+'> is up to date, no need to change anything!')
+                        logger.info('<'+cfile+'> is up to date, no need to change anything!')
                     
             else:
-                logger.warning('Unable to process <localProjects/'+project+'/'+file+'>, Hop3x does not support dir creation!')
+                logger.warning('Unable to process <localProjects/'+project+'/'+cfile+'>, Hop3x does not support dir creation!')
                 
     return 0
 
@@ -831,11 +912,16 @@ if __name__ == "__main__":
         bb_pass = getArgValue('pgit', sys.argv)
         
         sessionID = getArgValue('sID', sys.argv)
+
+        keyboardLayout = getArgValue('kl', sys.argv)
     
     if (username is None or password is None):
         logger.critical('Hop3x credentials are needed! Unable to use Hop3x !')
         exit()
-    
+    if (keyboardLayout is None):
+        logger.info('Set custom keyboard layout with [-kl], default is azerty.')
+        keyboardLayout = 'azerty'
+
     #Download Hop3x is not available
     if (os.path.exists('hop3xEtudiant/') == False):
         if (getHop3x() == False):
@@ -843,9 +929,9 @@ if __name__ == "__main__":
             exit()
 
     #Ask pyautogui to switch to azerty layout
-    logger.info('Set pyautogui keyboard layout as azerty')
+    logger.info('Set pyautogui keyboard layout as <'+keyboardLayout+'>')
     try:
-        pyautogui.setKeyboardLayout('azerty')
+        pyautogui.setKeyboardLayout(keyboardLayout)
     except:
         logger.warning('Cannot set keyboard layout, you may want to change it to QWERTY !')
 
@@ -875,22 +961,28 @@ if __name__ == "__main__":
             logger.critical('Unable to find Hop3xEtudiant.jar in <hop3xEtudiant/lib/Hop3xEtudiant.jar>')
             logger.critical('Zup3x cannot continue, sorry!')
             exit()
-
-        #Create subprocess of JRE with hop3x as executable
-        logger.info('Zup3x is creating subprocess for Hop3x through JRE [-Xmx512m -jar]')
+        #Used to redirect Hop3x stdout, stderr stream
         FNULL = open(os.devnull, 'w')
-        try:
-            Hop3x_Instance = subprocess.Popen(['java', '-Xmx512m', '-jar', 'hop3xEtudiant/lib/Hop3xEtudiant.jar'], stdout=FNULL, stderr=FNULL)
-        except:
-            logger.critical('Zup3x is unable to find Java runtime environement')
-            exit()
         
         #Bot core, handle Hop3x like human being.
-        res = Zup3x_CORE(username, password, Hop3x_Instance)
+        if (len(LOCAL_PROJECTS) > 0):
+            #Create subprocess of JRE with hop3x as executable
+            logger.info('Zup3x is creating subprocess for Hop3x through JRE [-Xmx512m -jar]')
+
+            try:
+                Hop3x_Instance = subprocess.Popen(['java', '-Xmx512m', '-jar', 'hop3xEtudiant/lib/Hop3xEtudiant.jar'], stdout=FNULL, stderr=FNULL)
+            except:
+                logger.critical('Zup3x is unable to find Java runtime environement')
+                exit()
+
+            res = Zup3x_CORE(username, password, Hop3x_Instance)
+        else:
+            res = 1
+
         waitNextIter = 0
         
         #Check if bot has done his task (== 0) or if failed (< 0)
-        if (res == 0):
+        if (res >= 0):
             logger.info('Zup3x have done his duty, everything should be fine.')
             waitNextIter = random.randrange(3600, 6600)
             logger.info("Next interation in %i sec" % waitNextIter)
@@ -900,7 +992,7 @@ if __name__ == "__main__":
 
         elif(res < 0):
             waitNextIter = 25
-            logger.warning("Next iteration in %i sec after issue(s)" % waitNextIter)
+            logger.warning("Next iteration in %i sec after issue(s), abord with code %i" % (waitNextIter, res))
         
         SESSIONS = parseSession()
         
@@ -915,4 +1007,5 @@ if __name__ == "__main__":
         delta = t2 - t1
         
         logger.info('Zup3x have worked for '+str(delta.total_seconds())+' sec.')
+        FNULL.close()
         time.sleep(waitNextIter)
