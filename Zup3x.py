@@ -1242,41 +1242,48 @@ def Zup3x_CORE(username, password, Hop3x_Instance):
             if (os.path.isdir("localProjects/"+project+"/"+cfile) == False):
 
                 if (os.path.exists("Hop3xEtudiant/data/workspace/"+currentSession['session']+"/"+project+"/"+cfile) == False):
-                    logger.info('<'+cfile+'> does not exist in Hop3x local workspace')
-                    logger.info('Zup3x is trying to create <'+cfile+'> in Hop3x')
-                    createNewFile(getFileNameWithoutExtension(cfile), 'C', getFileLanguage(cfile))
-                    time.sleep(2) #Let Hop3x time to create event on XML trace file
-
-                    for i in range(allowFailure):
-                        creationStatus = isFileCreated(currentSession['session'], currentSession['client'])
-                        if (creationStatus == False):
-                            logger.warning('Unable to find <AF> event, file isn\'t created yet, waiting..')
-                            notifyStats['warning'] += 1
-                            time.sleep(15)
-                        else:
-                            break;
-
-
-                    if (creationStatus == False):
-                        logger.critical('Unable to find <AF> event, Hop3x haven\'t created our file <'+cfile+'>. What a shame!')
-                        notifyStats['error'] += 1
-                        Hop3x_Instance.terminate()
-                        return -4
+                    #Test if format could be imported into Hop3x
+                    if (getFileLanguage(cfile) == 'Unknown'):
+                        logger.warning('Unable to create <'+cfile+'> in Hop3x, file format is not supported by editor !')
+                        notifyStats['warning'] += 1
                     else:
-                        logger.info('<'+cfile+'> has been created on project <'+project+'> with session <'+currentSession['session']+'>')
-                        notifyStats['fileCreated'] += 1
-                        if project not in modifiedProjectsList:
-                            modifiedProjectsList.append(project)
-                        
-                    #Create buffer with target file.
-                    with open ("localProjects/"+project+"/"+cfile, "r") as myfile:
-                        data=myfile.read()
+                        logger.info('<'+cfile+'> does not exist in Hop3x local workspace')
+                        logger.info('Zup3x is trying to create <'+cfile+'> in Hop3x')
+                        createNewFile(getFileNameWithoutExtension(cfile), 'C', getFileLanguage(cfile))
+                        time.sleep(2) #Let Hop3x time to create event on XML trace file
 
-                    #Start writing code..!
-                    botWriter(data, getFileLanguage(cfile))
-                    #Save current state
-                    saveCurrentFile()
-                    logger.info('<'+cfile+'> is now up to date and saved with Hop3x.')
+                        for i in range(allowFailure):
+                            creationStatus = isFileCreated(currentSession['session'], currentSession['client'])
+                            if (creationStatus == False):
+                                logger.warning('Unable to find <AF> event, file isn\'t created yet, waiting..')
+                                notifyStats['warning'] += 1
+                                time.sleep(15)
+                            else:
+                                break;
+
+
+                        if (creationStatus == False):
+                            logger.critical('Unable to find <AF> event, Hop3x haven\'t created our file <'+cfile+'>. What a shame!')
+                            notifyStats['error'] += 1
+                            Hop3x_Instance.terminate()
+                            return -4
+                        else:
+                            logger.info('<'+cfile+'> has been created on project <'+project+'> with session <'+currentSession['session']+'>')
+                            notifyStats['fileCreated'] += 1
+                            if project not in modifiedProjectsList:
+                                modifiedProjectsList.append(project)
+                            
+                        #Create buffer with target file.
+                        with open ("localProjects/"+project+"/"+cfile, "r") as myfile:
+                            data=myfile.read()
+
+                        #Start writing code..!
+                        botWriter(data, getFileLanguage(cfile))
+                        #Save current state
+                        saveCurrentFile()
+                        logger.info('<'+cfile+'> is now up to date and saved with Hop3x.')
+
+                    
                 else:
                     #Test if any differences
                     #remoteSize = os.path.getsize("Hop3xEtudiant/data/workspace/"+currentSession['session']+"/"+project+"/"+cfile)
@@ -1310,8 +1317,9 @@ def Zup3x_CORE(username, password, Hop3x_Instance):
                         logger.info('<'+cfile+'> is up to date, no need to change anything!')
                     
             else:
-                logger.warning('Unable to process <localProjects/'+project+'/'+cfile+'>, Hop3x does not support dir creation!')
-                notifyStats['warning'] += 1
+                if (cfile != 'origin' and cfile != '.git'):
+                    logger.warning('Unable to process <localProjects/'+project+'/'+cfile+'>, Hop3x does not support dir creation!')
+                    notifyStats['warning'] += 1
         #Update stats.
         if notifyStats['fileModified'] > 0:
             notifyStats['projectModified'] += 1
