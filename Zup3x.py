@@ -180,7 +180,7 @@ def getKnownledgeQuote():
     CPUQuote[7] = "On affirme a tort que Thomas Edison a invente le culturisme en 1878. En realite, Nikola Tesla avait fait breveter cette activite trois ans plus tot, sous le nom de { bobinisme }."
     CPUQuote[8] = "Avant l'invention des oeufs brouilles en 1912, le brunch traditionnel était constitue de poussins crus ou de cailloux brouilles."
     CPUQuote[9] = "Un enfant sur six sera un jour ou l'autre kidnappe par un Neerlandais."
-    quoteID = random.randrange(0, 9):
+    quoteID = random.randrange(0, 9)
 
     return CPUQuote[quoteID]
 
@@ -280,7 +280,7 @@ def mergeFiles(filename1, filename2):
         logger.critical('mergeFiles has failed with '+filename1+' and '+filename2+' with '+e.strerror)
         return None
     
-    liste = list(difflib.ndiff(f1.readlines(),f2.readlines()))
+    liste = list(difflib.ndiff(f2.readlines(),f1.readlines()))
     diff = list() # Contiendra les différences et les lignes
 
     for i,j in zip(range(liste.__len__()),liste):
@@ -359,7 +359,7 @@ def hitTabRange(NB_TIME):
         pyautogui.press('tab')
         time.sleep(0.2)
 
-def importNewProject(PROJECT_PATH, TYPE):
+def importNewProject(PROJECT_PATH, PROJECT_NAME, TYPE):
     openContextMenuFile()
     time.sleep(1)
     for i in range(4):
@@ -373,6 +373,14 @@ def importNewProject(PROJECT_PATH, TYPE):
     pyautogui.typewrite(PROJECT_PATH, 0.2)
     time.sleep(2)
     pyautogui.press('enter')
+    time.sleep(1)
+
+    #Write new name
+    for i in range(6):
+        pyautogui.press('backspace')
+        time.sleep(0.2)
+
+    pyautogui.typewrite(PROJECT_NAME, 0.2)
     time.sleep(1)
 
     hitTabRange(1)
@@ -636,7 +644,7 @@ def isClientDeconnected(SESSION, CLIENT_NAME):
     else:
         return False
 
-def isProjectCreated(SESSION, CLIENT_NAME):
+def isProjectCreated(SESSION, CLIENT_NAME, PROJECT_TARGET = False):
     
     data = getLastestTraceBuffer(SESSION, CLIENT_NAME)
     if (data == False):
@@ -652,7 +660,7 @@ def isProjectCreated(SESSION, CLIENT_NAME):
     
     lAttrib = root[-1].attrib
     
-    if (lAttrib['K'] == 'AP'):
+    if ( (lAttrib['K'] == 'AP' and PROJECT_TARGET == False) or (lAttrib['K'] == 'IT' and PROJECT_TARGET == findXMLElement(root[-1], 'P'))):
         return True
     else:
         return False
@@ -775,8 +783,8 @@ def botWriter(BUFFER, FILE_EXTENSION):
 
             #Take a rest if needed
             if ((random.randrange(int((pos/bufSize) *100), 100)) > 98):
-                speedWriter = random.randrange(120, 600)
-                if speedWriter < 340:
+                speedWriter = random.randrange(30, 66)
+                if speedWriter < 40:
                     logger.info('Your assistant need to take a pee, let me '+str(speedWriter)+' sec. I\'ll be back !')
                 else:
                     logger.info('Your assistant need to take a nap for '+str(speedWriter)+' sec. I\'ll be back !')
@@ -1088,7 +1096,6 @@ def Zup3x_CORE(username, password, Hop3x_Instance):
         if (targetSession != 'Unknown'):
             declaredFiles = getDeclaredFilesProject(targetSession, project)
             logger.info('Zup3x has detected project <'+project+'> in session ['+targetSession+'] with: '+str(declaredFiles))
-
         else:
             logger.info('Project <'+project+'> does not seem to be on Hop3x for now..')
 
@@ -1098,16 +1105,19 @@ def Zup3x_CORE(username, password, Hop3x_Instance):
             #Do we have to import origin folder ?
             if (os.path.exists('localProjects/'+project+'/origin') and os.path.isdir('localProjects/'+project+'/origin') == True):
                 logger.info('Trying to create new project named <'+project+'> with import function')
-                importNewProject(os.path.abspath('localProjects/'+project+'/origin'), 'C+Make')
+                importNewProject(os.path.abspath('localProjects/'+project+'/origin'), project, 'C+Make')
+                otarget = project
             else:
                 logger.warning('This session does not have any project named <'+project+'>')
                 logger.info('Zup3x is now trying to create a new project in <'+currentSession['session']+'>')
                 createNewProject(project, 'C+Make')
+                otarget = False
 
             time.sleep(5) #Let Hop3x time to create event on XML trace file
 
             for i in range(allowFailure):
-                creationStatus = isProjectCreated(currentSession['session'], currentSession['client'])
+                #2*nbFile
+                creationStatus = isProjectCreated(currentSession['session'], currentSession['client'], otarget)
                 if (creationStatus == False):
                     logger.warning('Unable to find <AP> event, project isn\'t created yet, waiting..')
                     notifyStats['warning'] += 1
@@ -1216,14 +1226,16 @@ def Zup3x_CORE(username, password, Hop3x_Instance):
                     logger.info('<'+cfile+'> is now up to date and saved with Hop3x.')
                 else:
                     #Test if any differences
-                    remoteSize = os.path.getsize("Hop3xEtudiant/data/workspace/"+currentSession['session']+"/"+project+"/"+cfile)
-                    localSize = os.path.getsize("localProjects/"+project+"/"+cfile)
+                    #remoteSize = os.path.getsize("Hop3xEtudiant/data/workspace/"+currentSession['session']+"/"+project+"/"+cfile)
+                    #localSize = os.path.getsize("localProjects/"+project+"/"+cfile)
                     
+                    mergeDic = mergeFiles("localProjects/"+project+"/"+cfile, "Hop3xEtudiant/data/workspace/"+currentSession['session']+"/"+project+"/"+cfile)
+
                     #Non viable methode for changes detections, need to be reviewed!
-                    if (math.fabs(remoteSize - localSize) > 50):
-                        logger.info('<'+cfile+'> is newer than Hop3x local copy, Zup3x gonna update it! DiffSize = ('+str(math.fabs(remoteSize - localSize))+' octet(s))')
+                    if (len(mergeDic) > 0):
+                        logger.info('<'+cfile+'> is newer than Hop3x local copy, Zup3x have to update it!')
                         #Search for file in Hop3x explorer
-                        if (searchFileExplorer(targetSession, cfile, files, project, currentSession['client']) == True):
+                        if (searchFileExplorer(currentSession['session'], cfile, files, project, currentSession['client']) == True):
                             logger.info('Zup3x is now ready to edit <'+cfile+'> in Hop3x editor, event IT/ST match file target!')
                             #Create buffer with target file.
                             with open ("localProjects/"+project+"/"+cfile, "r") as myfile:
@@ -1296,10 +1308,10 @@ def hasAnythingChanged():
                 if (os.path.exists('hop3xEtudiant/data/workspace/'+targetSession+'/'+project+'/'+pfile) == False):
                     return True
                 else:
-                    remoteSize = os.path.getsize("Hop3xEtudiant/data/workspace/"+targetSession+"/"+project+"/"+pfile)
-                    localSize = os.path.getsize("localProjects/"+project+"/"+pfile)
-
-                    if (math.fabs(remoteSize - localSize) > 50):
+                    
+                    mergeDiff = mergeFiles("localProjects/"+project+"/"+pfile, "Hop3xEtudiant/data/workspace/"+targetSession+"/"+project+"/"+pfile)
+                    
+                    if (len(mergeDiff) > 0):
                         logger.info('Change(s) has been detected in <'+pfile+'> from project <'+project+'>')
                         return True
 
@@ -1438,8 +1450,9 @@ if __name__ == "__main__":
             logger.warning("Next iteration in %i sec after issue(s), abord with code %i" % (waitNextIter, res))
 
         #Terminate JRE instance if still running in background
-        logger.info('Terminate JRE if still running in background to avoid common issues.')
-        Hop3x_Instance.terminate()
+        if (res <= 0):
+            logger.info('Terminate JRE if still running in background to avoid common issues.')
+            Hop3x_Instance.terminate()
         
         t2 = datetime.now()
         delta = t2 - t1
