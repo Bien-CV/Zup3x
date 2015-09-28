@@ -261,7 +261,7 @@ def mergeLines(LineOld, LineNew):
         elif opcode == 'delete':
             output.append("<->" + seqm.a[a0:a1] + "</->")
         elif opcode == 'replace':
-            output.append('<*>' + seqm.a[a0:a1] + '</'+seqm.b[b0:b1]+'>')
+            output.append('<->' + seqm.a[a0:a1] + '</->'+'<+>'+seqm.b[b0:b1]+'</+>')
         else:
             #raise RuntimeError, "Unexpected opcode in mergeLines() function"
             logger.error("Unexpected opcode in mergeLines() function")
@@ -320,9 +320,9 @@ def openContextMenuEdition():
 def openContextMenuTools():
 
     if (sys.platform == 'darwin'):
-        manualHotKey('alt', 't', True)
+        manualHotKey('alt', 'o', True)
     else:
-        manualHotKey('alt', 't')
+        manualHotKey('alt', 'o')
 
 def openContextMenuAssist():
     if (sys.platform == 'darwin'):
@@ -643,6 +643,30 @@ def isClientDeconnected(SESSION, CLIENT_NAME):
         return True
     else:
         return False
+
+def isCompilationSuccess(SESSION, CLIENT_NAME):
+
+    data = getLastestTraceBuffer(SESSION, CLIENT_NAME)
+    if (data == False):
+        logger.warning('Unable to get lastest XML trace from trace folder !')
+        return False
+
+    tree = ET.ElementTree(ET.fromstring(data))
+    root = tree.getroot()
+    
+    if (len(root) == 0):
+        logger.error('Enable to parse XML, tree is empty, see trace file')
+        return False
+    
+    lAttrib = root[-1].attrib
+    
+    if (lAttrib['K'] == 'CM' or lAttrib['K'] == 'CA'):
+        return True
+    elif (lAttrib['K'] == 'CAE' or lAttrib['K'] == 'CME'):
+        return False
+    else:
+        return None
+
 
 def isProjectCreated(SESSION, CLIENT_NAME, PROJECT_TARGET = False):
     
@@ -1087,6 +1111,8 @@ def Zup3x_CORE(username, password, Hop3x_Instance):
     LOCAL_PROJECTS = loadLocalProjects()
     logger.info('Target project(s) = '+str(LOCAL_PROJECTS))
     
+    modifiedProjectsList = []
+
     for project in LOCAL_PROJECTS:
         
         logger.info('Zup3x is now working on <'+project+'> project')
@@ -1135,6 +1161,7 @@ def Zup3x_CORE(username, password, Hop3x_Instance):
                 #targetSession = getTargetSession(SESSIONS, project)
                 logger.info('Project <'+project+'> has been created in session ['+currentSession['session']+']')
                 notifyStats['projectCreated'] += 1
+                modifiedProjectsList.append(project)
 
         else:
             logger.info('Hop3x does have <'+project+'> in his local workspace, no need to create.')
@@ -1180,6 +1207,8 @@ def Zup3x_CORE(username, password, Hop3x_Instance):
                     else:
                         logger.info('<'+rfile+'> has been deleted from <'+currentSession['session']+'>')
                         notifyStats['deletedFiles'] += 1
+                        if project not in modifiedProjectsList:
+                            modifiedProjectsList.append(project)
 
                 else:
                     logger.error('Unable to delete <'+rfile+'> from Hop3x, file not found !')
@@ -1214,6 +1243,8 @@ def Zup3x_CORE(username, password, Hop3x_Instance):
                     else:
                         logger.info('<'+cfile+'> has been created on project <'+project+'> with session <'+currentSession['session']+'>')
                         notifyStats['fileCreated'] += 1
+                        if project not in modifiedProjectsList:
+                            modifiedProjectsList.append(project)
                         
                     #Create buffer with target file.
                     with open ("localProjects/"+project+"/"+cfile, "r") as myfile:
@@ -1244,6 +1275,8 @@ def Zup3x_CORE(username, password, Hop3x_Instance):
                             #Start writing code..!
                             botWriter(data, getFileLanguage(cfile))
                             notifyStats['fileModified'] += 1
+                            if project not in modifiedProjectsList:
+                                modifiedProjectsList.append(project)
                         else:
                             logger.error('Unable to find ST/IT event that match file target, Zup3x is unable to edit <'+cfile+'>')
                             notifyStats['error'] += 1
@@ -1255,7 +1288,24 @@ def Zup3x_CORE(username, password, Hop3x_Instance):
                 notifyStats['warning'] += 1
         #Update stats.
         if notifyStats['fileModified'] > 0:
-            notifyStats['projectModified'] += 1            
+            notifyStats['projectModified'] += 1
+
+        #Run make
+        time.sleep(2)
+        if 'Makefile' in files:
+            if (searchFileExplorer(currentSession['session'], 'Makefile', files, project, currentSession['client']) == True):
+                notifyStats['compilation'] += 1
+                compileCurrentWork()
+        else:
+            notifyStats['compilation'] += 1
+            compileCurrentWork()
+        
+        time.sleep(5)
+        notifyStats['projectHandled'] = str(modifiedProjectsList)
+
+        if (isCompilationSuccess(currentSession['session'], currentSession['client']) == True):
+            notifyStats['compilationSuccess'] += 1
+
     return 0
 
 def getRemoteRepository(bb_user, bb_pass):
@@ -1308,9 +1358,9 @@ def hasAnythingChanged():
                 if (os.path.exists('hop3xEtudiant/data/workspace/'+targetSession+'/'+project+'/'+pfile) == False):
                     return True
                 else:
-                    
+
                     mergeDiff = mergeFiles("localProjects/"+project+"/"+pfile, "Hop3xEtudiant/data/workspace/"+targetSession+"/"+project+"/"+pfile)
-                    
+
                     if (len(mergeDiff) > 0):
                         logger.info('Change(s) has been detected in <'+pfile+'> from project <'+project+'>')
                         return True
@@ -1474,6 +1524,9 @@ if __name__ == "__main__":
         notifyStats['error'] = 0
         notifyStats['warning'] = 0
         notifyStats['worktime'] = 0
+        notifyStats['compilation'] = 0
+        notifyStats['compilationSuccess'] = 0
+        notifyStats['projectHandled'] = 'None'
 
         FNULL.close()
         time.sleep(waitNextIter)
