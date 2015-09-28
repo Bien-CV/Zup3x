@@ -191,22 +191,22 @@ def generateMailBody(notifyContent):
     body = '''
     Madame, Monsieur, %s
 
-    J'ai le plaisir de vous annoncer que nous avons execute Hop3x etudiant comme prevu dans notre arrangement.
-    En voici le bilan definitif. A titre informatif, cette session m'a pris %i seconde(s) de mon temps CPU.
+    J'ai le plaisir de vous annoncer que nous avons executé Hop3x etudiant comme prevu dans notre arrangement.
+    En voici le bilan définitif. A titre informatif, cette session m'a pris %i seconde(s) de mon temps CPU.
 
-    Zup3x a genere %i erreur(s) ainsi que %i avertissement(s) (!= Concerne uniquement le processus Zup3x)
+    Zup3x a généré %i erreur(s) ainsi que %i avertissement(s) (!= Concerne uniquement le processus Zup3x)
 
-    J'ai retravaille les projets suivants: %s
+    J'ai retravaillé les projets suivants: %s
 
-    - %i projet(s) ont ete cree(s) et %i modifie(s).
-    - %i fichier(s) ont ete cree(s) et %i modifie(s) par la meme occasion, j'en ai supprime %i.
+    - %i projet(s) ont ete crée(s) et %i modifié(s).
+    - %i fichier(s) ont ete crée(s) et %i modifié(s) par la même occasion, j'en ai supprimé %i.
 
-    J'ai tenter de compiler vos projets %i fois, la compilation eu reussi %i fois.
-    Vous trouverez en piece jointe les donnees logs genere par Zup3x.
+    J'ai tenté de compiler vos projets %i fois, la compilation eu reussi %i fois.
+    Vous trouverez en piece jointe les données logs généré par Zup3x.
 
-    Je vous prie d'agreer, Madame, Monsieur, l'expression de mes sentiments distingues.
+    Je vous prie d'agréer, Madame, Monsieur, l'expression de mes sentiments distingués.
 
-    P.S. Cette session vous a necessite %.02f kWh, au tarif actuel, %.02f euros.
+    P.S. Cette session vous a necessité %.02f kWh, au tarif actuel, %.02f euros.
     P.S.2 Le saviez-vous ? %s
 
     N.B. Vous pouvez m'envoyer les commandes suivantes "STOP" pour que je reste en suspend ou "OK" pour continuer. Je vous confirmerai la bonne reception par mail.
@@ -247,6 +247,29 @@ def getHop3x():
 
     f.close()
     return extractZip('Hop3xEtudiant.zip', '')
+
+def mergeLines(LineOld, LineNew):
+    output = []
+    strout = ''
+
+    seqm = difflib.SequenceMatcher(None, LineOld, LineNew)
+    for opcode, a0, a1, b0, b1 in seqm.get_opcodes():
+        if opcode == 'equal':
+            output.append(seqm.a[a0:a1])
+        elif opcode == 'insert':
+            output.append("<+>" + seqm.b[b0:b1] + "</+>")
+        elif opcode == 'delete':
+            output.append("<->" + seqm.a[a0:a1] + "</->")
+        elif opcode == 'replace':
+            output.append('<*>' + seqm.a[a0:a1] + '</'+seqm.b[b0:b1]+'>')
+        else:
+            #raise RuntimeError, "Unexpected opcode in mergeLines() function"
+            logger.error("Unexpected opcode in mergeLines() function")
+
+    for element in output:
+        strout += element
+
+    return strout
 
 def mergeFiles(filename1, filename2):
     
@@ -408,7 +431,6 @@ def createNewFile(FILENAME, PROJECT_TYPE, TYPE):
     
     pyautogui.press('space')
 
-#Only meant for Windows OS (Fix for thoses who possese azerty keyboard)
 def PasteBuffer(BUFFER):
     #xerox.copy(BUFFER)
     manualHotKey(CTRL_SWAP, 'v')
@@ -509,8 +531,8 @@ def getActiveSession():
     logger.warning('Unable to get current active session')
     return None
 
-def getFileHandled(SESSION):
-    data = getLastestTraceBuffer(SESSION)
+def getFileHandled(SESSION, CLIENT_NAME):
+    data = getLastestTraceBuffer(SESSION, CLIENT_NAME)
     if (data == False):
         logger.warning('Unable to get lastest XML trace from trace folder !')
         return False
@@ -529,30 +551,8 @@ def getFileHandled(SESSION):
     else:
         return False
 
-def checkFileHandled(SESSION, FILE_TARGET):
-    
-    data = getLastestTraceBuffer(SESSION)
-    if (data == False):
-        logger.warning('Unable to get lastest XML trace from trace folder !')
-        return False
-    
-    tree = ET.ElementTree(ET.fromstring(data))
-    root = tree.getroot()
-    
-    if (len(root) == 0):
-        logger.error('Enable to parse XML, tree is empty, see trace file')
-        return False
-    
-    lAttrib = root[-1].attrib
-
-    if ((lAttrib['K'] == 'IT' or lAttrib['K'] == 'ST' or lAttrib == 'AF')  and findXMLElement(root[-1], 'F') == FILE_TARGET):
-        logger.info(lAttrib['K']+' event on <'+FILE_TARGET+'> detected using XML parser.')
-        return True
-    else:
-        return False
-
-def getCurrentProject(SESSION):
-    data = getLastestTraceBuffer(SESSION)
+def getCurrentProject(SESSION, CLIENT_NAME):
+    data = getLastestTraceBuffer(SESSION, CLIENT_NAME)
     if (data == False):
         logger.warning('Unable to get lastest XML trace from trace folder !')
         return False
@@ -570,30 +570,10 @@ def getCurrentProject(SESSION):
         return findXMLElement(root[-1], 'P')
     else:
         return 'Unknown'
-
-def isClientInitialized(SESSION):
     
-    data = getLastestTraceBuffer(SESSION)
-    if (data == False):
-        logger.warning('Unable to get lastest XML trace from trace folder !')
-        return False
+def isClientDeconnected(SESSION, CLIENT_NAME):
     
-    tree = ET.ElementTree(ET.fromstring(data))
-    root = tree.getroot()
-    
-    if (len(root) == 0):
-        logger.error('Enable to parse XML, tree is empty, see trace file')
-        return False
-    lAttrib = root[-1].attrib
-    
-    if (lAttrib['K'] == 'CONNECTION'):
-        return True
-    else:
-        return False
-    
-def isClientDeconnected(SESSION):
-    
-    data = getLastestTraceBuffer(SESSION)
+    data = getLastestTraceBuffer(SESSION, CLIENT_NAME)
     if (data == False):
         logger.warning('Unable to get lastest XML trace from trace folder !')
         return False
@@ -612,9 +592,9 @@ def isClientDeconnected(SESSION):
     else:
         return False
 
-def isProjectCreated(SESSION):
+def isProjectCreated(SESSION, CLIENT_NAME):
     
-    data = getLastestTraceBuffer(SESSION)
+    data = getLastestTraceBuffer(SESSION, CLIENT_NAME)
     if (data == False):
         logger.warning('Unable to get lastest XML trace from trace folder !')
         return False
@@ -633,9 +613,9 @@ def isProjectCreated(SESSION):
     else:
         return False
 
-def isFileCreated(SESSION):
+def isFileCreated(SESSION, CLIENT_NAME):
     
-    data = getLastestTraceBuffer(SESSION)
+    data = getLastestTraceBuffer(SESSION, CLIENT_NAME)
     if (data == False):
         logger.warning('Unable to get lastest XML trace from trace folder !')
         return False
@@ -654,8 +634,8 @@ def isFileCreated(SESSION):
     else:
         return False
 
-def isFileDeleted(SESSION):
-    data = getLastestTraceBuffer(SESSION)
+def isFileDeleted(SESSION, CLIENT_NAME):
+    data = getLastestTraceBuffer(SESSION, CLIENT_NAME)
     if (data == False):
         logger.warning('Unable to get lastest XML trace from trace folder !')
         return False
@@ -896,7 +876,7 @@ def getArgValue(target, argv):
         
     return None
 
-def searchFileExplorer(SESSION, FILE_TARGET, FILES_LIST, PROJECT_TARGET):
+def searchFileExplorer(SESSION, FILE_TARGET, FILES_LIST, PROJECT_TARGET, CLIENT_NAME):
     
     declaredFiles = getDeclaredFilesProject(SESSION, PROJECT_TARGET)
 
@@ -907,7 +887,7 @@ def searchFileExplorer(SESSION, FILE_TARGET, FILES_LIST, PROJECT_TARGET):
     pyautogui.press('backspace')
 
     #Verify if we are on the right project
-    currentProject = getCurrentProject(SESSION)
+    currentProject = getCurrentProject(SESSION, CLIENT_NAME)
     projectsList = loadWorkSpaceProjects(SESSION)
 
     if (currentProject != PROJECT_TARGET):
@@ -928,7 +908,7 @@ def searchFileExplorer(SESSION, FILE_TARGET, FILES_LIST, PROJECT_TARGET):
                     offset = 1
                 else:
                     offset = 0
-                for i in range(int(math.fabs(currentDeclaredFiles.index(getFileHandled(SESSION)) - currentDeclaredFiles.index(currentDeclaredFiles[-1]))) + 2 + offset):
+                for i in range(int(math.fabs(currentDeclaredFiles.index(getFileHandled(SESSION, CLIENT_NAME)) - currentDeclaredFiles.index(currentDeclaredFiles[-1]))) + 2 + offset):
                     pyautogui.press('down')
                     time.sleep(0.2)
             else: #Go up!
@@ -937,7 +917,7 @@ def searchFileExplorer(SESSION, FILE_TARGET, FILES_LIST, PROJECT_TARGET):
                     offset = 1
                 else:
                     offset = 0
-                for i in range(int(math.fabs(currentDeclaredFiles.index(getFileHandled(SESSION)) - currentDeclaredFiles.index(currentDeclaredFiles[-1]))) + 1 + offset):
+                for i in range(int(math.fabs(currentDeclaredFiles.index(getFileHandled(SESSION, CLIENT_NAME)) - currentDeclaredFiles.index(currentDeclaredFiles[-1]))) + 1 + offset):
                     pyautogui.press('up')
                     time.sleep(0.2)
 
@@ -949,7 +929,7 @@ def searchFileExplorer(SESSION, FILE_TARGET, FILES_LIST, PROJECT_TARGET):
             pyautogui.press('backspace')
             time.sleep(2)
 
-            if (getCurrentProject(SESSION) == currentProject):
+            if (getCurrentProject(SESSION, CLIENT_NAME) == currentProject):
                 #If project was minimized..
                 selectExplorerZone()
                 if (currentProject < PROJECT_TARGET):
@@ -964,7 +944,7 @@ def searchFileExplorer(SESSION, FILE_TARGET, FILES_LIST, PROJECT_TARGET):
                 time.sleep(2)
 
             #Verify if we are on the right project
-            currentProject = getCurrentProject(SESSION)
+            currentProject = getCurrentProject(SESSION, CLIENT_NAME)
             if (currentProject == PROJECT_TARGET):
                 break
     
@@ -974,14 +954,14 @@ def searchFileExplorer(SESSION, FILE_TARGET, FILES_LIST, PROJECT_TARGET):
         return False
 
     #If we are actually on the target file
-    if (getFileHandled(SESSION) == FILE_TARGET):
+    if (getFileHandled(SESSION, CLIENT_NAME) == FILE_TARGET):
         return True
     
     for i in range(len(declaredFiles)):
         
         selectExplorerZone()
 
-        cfile = getFileHandled(SESSION)
+        cfile = getFileHandled(SESSION, CLIENT_NAME)
         if (declaredFiles.index(cfile) < declaredFiles.index(FILE_TARGET)):
             for i in range(int(math.fabs(declaredFiles.index(cfile)-declaredFiles.index(FILE_TARGET)))):
                 pyautogui.press('down')
@@ -996,7 +976,7 @@ def searchFileExplorer(SESSION, FILE_TARGET, FILES_LIST, PROJECT_TARGET):
         pyautogui.press('backspace')
         time.sleep(2)
         #Check if we are on the target file
-        if (getFileHandled(SESSION) == FILE_TARGET):
+        if (getFileHandled(SESSION, CLIENT_NAME) == FILE_TARGET):
             return True
         #If not, well, let's continue..
         selectExplorerZone()
@@ -1078,7 +1058,7 @@ def Zup3x_CORE(username, password, Hop3x_Instance):
             time.sleep(2)
 
             for i in range(allowFailure):
-                creationStatus = isProjectCreated(currentSession['session'])
+                creationStatus = isProjectCreated(currentSession['session'], currentSession['client'])
                 if (creationStatus == False):
                     logger.warning('Unable to find <AP> event, project isn\'t created yet, waiting..')
                     notifyStats['warning'] += 1
@@ -1123,11 +1103,11 @@ def Zup3x_CORE(username, password, Hop3x_Instance):
 
             for rfile in deletedFiles:
                 logger.info('Zup3x is trying to delete <'+rfile+'> from Hop3x.')
-                if (searchFileExplorer(currentSession['session'], rfile, declaredFiles, project) == True):
+                if (searchFileExplorer(currentSession['session'], rfile, declaredFiles, project, currentSession['client']) == True):
                     deleteCurrentFile()
                     time.sleep(2)
                     for i in range(allowFailure):
-                        deleteStatus = isFileDeleted(currentSession['session'])
+                        deleteStatus = isFileDeleted(currentSession['session'], currentSession['client'])
                         if (deleteStatus == False):
                             logger.warning('Unable to find <SF> event, file isn\'t deleted yet, waiting..')
                             notifyStats['warning'] += 1
@@ -1158,7 +1138,7 @@ def Zup3x_CORE(username, password, Hop3x_Instance):
                     time.sleep(2) #Let Hop3x time to create event on XML trace file
 
                     for i in range(allowFailure):
-                        creationStatus = isFileCreated(currentSession['session'])
+                        creationStatus = isFileCreated(currentSession['session'], currentSession['client'])
                         if (creationStatus == False):
                             logger.warning('Unable to find <AF> event, file isn\'t created yet, waiting..')
                             notifyStats['warning'] += 1
@@ -1194,7 +1174,7 @@ def Zup3x_CORE(username, password, Hop3x_Instance):
                     if (math.fabs(remoteSize - localSize) > 50):
                         logger.info('<'+cfile+'> is newer than Hop3x local copy, Zup3x gonna update it! DiffSize = ('+str(math.fabs(remoteSize - localSize))+' octet(s))')
                         #Search for file in Hop3x explorer
-                        if (searchFileExplorer(targetSession, cfile, files, project) == True):
+                        if (searchFileExplorer(targetSession, cfile, files, project, currentSession['client']) == True):
                             logger.info('Zup3x is now ready to edit <'+cfile+'> in Hop3x editor, event IT/ST match file target!')
                             #Create buffer with target file.
                             with open ("localProjects/"+project+"/"+cfile, "r") as myfile:
