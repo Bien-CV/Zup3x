@@ -2,10 +2,10 @@
 # -*- coding: utf-8 -*-
 
 '''
-    Zup3x Client
-    Description: Hop3x Assistant Bot
+    Zup3x
+    Description: Hop3x assistant bot
     Author(s): TAHRI Ahmed
-    Version: Delta (0.2.3)
+    Version: Sigma (0.3.0)
     Notice: 
     
         This stand only for educational purposes, 
@@ -35,6 +35,7 @@ import shutil
 import zipfile
 import signal
 import smtplib
+import imaplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from email.mime.application import MIMEApplication
@@ -42,7 +43,7 @@ from email.mime.application import MIMEApplication
 __author__ = "Ousret"
 __date__ = "$19 sept. 2015 11:15:33$"
 
-__VERSION__ = '0.2.2' #Local Zup3x revision
+__VERSION__ = '0.3.0' #Local Zup3x revision
 ZUP3X_ROOT_PATH = 'java -Xmx512m -jar hop3xEtudiant/lib/Hop3xEtudiant.jar'
 
 SCREEN_X, SCREEN_Y = pyautogui.size()
@@ -75,7 +76,7 @@ logger.addHandler(stream_handler)
 
 allowFailure = 6
 
-notifyStats = {'projectCreated':0, 'fileCreated':0, 'fileModified':0, 'fileDeleted':0, 'error':0, 'warning': 0, 'session':'Unknown', 'worktime': 0, 'nextIteration':0 }
+notifyStats = {'projectCreated':0, 'projectModified':0 ,'fileCreated':0, 'fileModified':0, 'fileDeleted':0, 'error':0, 'warning': 0, 'session':'Unknown', 'user': 'Unknown', 'worktime': 0, 'nextIteration':0, 'compilationSuccess':0, 'compilation':0, 'projectHandled': 'None' }
 
 if (sys.platform == 'darwin'):
     CTRL_SWAP = 'command'
@@ -98,7 +99,7 @@ if (sys.platform == 'win32'):
 else:
     signal.signal(signal.SIGTERM, signalHandle)
 
-#GMail Notification zup3xbot@gmail.com
+#GMail Notification
 class Notify:
     
     def __init__(self, usr, password):
@@ -133,11 +134,84 @@ class Notify:
                     msgLog = MIMEApplication(fic.read(), 'log')
                     msgLog.add_header('Content-Disposition', 'attachment', filename=os.path.basename(AVAILABLE_LOGS[-1]))
                     msg.attach(msgLog)
+                    fic.close()
             except:
                 logger.error('Unable to attach <'+afile+'> for GMail notification')
 
         server.sendmail(fromaddr,toaddr,msg.as_string())
         server.quit()
+
+    def receiveSig():
+        mail = imaplib.IMAP4_SSL('imap.gmail.com')
+
+        try:
+            mail.login(self.username +'@gmail.com', self.password)
+        except:
+            logger.warning('Cannot login into your GMail IMAP account, maybe IMAP is not enabled, if so, activate it!')
+            return 'ntp'
+
+        mail.list()
+        # Out: list of "folders" aka labels in gmail.
+        mail.select("inbox") # connect to inbox.
+        try:
+            result, data = mail.search(None, "ALL")
+            ids = data[0] # data is a list.
+            id_list = ids.split() # ids is a space separated string
+            latest_email_id = id_list[-1] # get the latest
+            result, data = mail.fetch(latest_email_id, "(RFC822)") # fetch the email body (RFC822) for the given ID
+            raw_email = data[0][1]
+            raw_email.lower()
+
+            return raw_email
+        except:
+            logger.warning('Inbox is empty, cannot receive order.')
+            return 'ntp'
+
+def getKnownledgeQuote():
+    
+    CPUQuote = {}
+    CPUQuote[0] = "Les rats sont incapables de vomir."
+    CPUQuote[1] = "La masse atomique du germanium est de 72,64."
+    CPUQuote[2] = "Les avocats sont les plus riches de tous les fruits et de toutes les professions liberales."
+    CPUQuote[3] = "L'eau chaude gele plus vite que l'eau froide."
+    CPUQuote[4] = "Avec 3410 C, le tungstene détient le record de temperature de fusion de tous les metaux."
+    CPUQuote[5] = "Marie Curie a découvert la theorie de la radioactivite, le traitement de la radioactivite et la mort par radioactivite."
+    CPUQuote[6] = "William Shakespeare n'a jamais existe. Ses pièces ont été creees en 1589 par Francis Bacon, qui s'est servi d'une planche de ouija pour asservir des esprits dramaturges."
+    CPUQuote[7] = "On affirme a tort que Thomas Edison a invente le culturisme en 1878. En realite, Nikola Tesla avait fait breveter cette activite trois ans plus tot, sous le nom de { bobinisme }."
+    CPUQuote[8] = "Avant l'invention des oeufs brouilles en 1912, le brunch traditionnel était constitue de poussins crus ou de cailloux brouilles."
+    CPUQuote[9] = "Un enfant sur six sera un jour ou l'autre kidnappe par un Neerlandais."
+    quoteID = random.randrange(0, 9):
+
+    return CPUQuote[quoteID]
+
+def generateMailBody(notifyContent):
+
+    totalkWh = (notifyContent['worktime']/3600) * (120 / 1000)
+    totalPrix = totalkWh * 0.15240
+    body = '''
+    Madame, Monsieur, %s
+
+    J'ai le plaisir de vous annoncer que nous avons execute Hop3x etudiant comme prevu dans notre arrangement.
+    En voici le bilan definitif. A titre informatif, cette session m'a pris %i seconde(s) de mon temps CPU.
+
+    Zup3x a genere %i erreur(s) ainsi que %i avertissement(s) (!= Concerne uniquement le processus Zup3x)
+
+    J'ai retravaille les projets suivants: %s
+
+    - %i projet(s) ont ete cree(s) et %i modifie(s).
+    - %i fichier(s) ont ete cree(s) et %i modifie(s) par la meme occasion, j'en ai supprime %i.
+
+    J'ai tenter de compiler vos projets %i fois, la compilation eu reussi %i fois.
+    Vous trouverez en piece jointe les donnees logs genere par Zup3x.
+
+    Je vous prie d'agreer, Madame, Monsieur, l'expression de mes sentiments distingues.
+
+    P.S. Cette session vous a necessite %.02f kWh, au tarif actuel, %.02f euros.
+    P.S.2 Le saviez-vous ? %s
+
+    N.B. Vous pouvez m'envoyer les commandes suivantes "STOP" pour que je reste en suspend ou "OK" pour continuer. Je vous confirmerai la bonne reception par mail.
+    ''' % (notifyContent['user'], notifyContent['worktime'], notifyContent['error'], notifyContent['warning'], notifyContent['projectHandled'], notifyContent['projectCreated'], notifyContent['projectModified'] ,notifyContent['fileCreated'], notifyContent['fileModified'], notifyContent['fileDeleted'], notifyContent['compilation'], notifyContent['compilationSuccess'], totalkWh, totalPrix, getKnownledgeQuote() )
+    return body
 
 def getHop3xRepo(Username, Password):
     API_BB = httplib2.Http(".cache")
@@ -171,6 +245,7 @@ def getHop3x():
         logger.critical('Unable to create Hop3xEdudiant.zip')
         return False
 
+    f.close()
     return extractZip('Hop3xEtudiant.zip', '')
 
 def mergeFiles(filename1, filename2):
@@ -188,6 +263,9 @@ def mergeFiles(filename1, filename2):
     for i,j in zip(range(liste.__len__()),liste):
         if j[0]=='-' or j[0]=='+':
             diff.append({i:j})
+
+    f1.close()
+    f2.close()
 
     return diff
 
@@ -340,7 +418,7 @@ def WhipeAll():
     pyautogui.press('backspace')
 
 def selectExplorerZone():
-    pyautogui.moveTo(int(SCREEN_X/15), int(SCREEN_Y/3), 2)
+    pyautogui.moveTo(int(SCREEN_X/9), int(SCREEN_Y/3), 2)
     pyautogui.click()
 
 def selectEditorZone():
@@ -369,6 +447,7 @@ def getDeclaredFilesHop3x(XMLTREE):
         logger.error('Unable to read XML file tree, see <'+XMLTREE+'>')
         return False
     
+    f1.close()
     tree = ET.ElementTree(ET.fromstring(data))
     root = tree.getroot()
     
@@ -888,8 +967,7 @@ def searchFileExplorer(SESSION, FILE_TARGET, FILES_LIST, PROJECT_TARGET):
             currentProject = getCurrentProject(SESSION)
             if (currentProject == PROJECT_TARGET):
                 break
-            
-
+    
     #It can't be! Something wrong.. or missed!
     if (currentProject != PROJECT_TARGET):
         logger.error('Unable to find project <'+PROJECT_TARGET+'> on Hop3x explorer, our logic failed..')
@@ -927,9 +1005,9 @@ def searchFileExplorer(SESSION, FILE_TARGET, FILES_LIST, PROJECT_TARGET):
 
 def Zup3x_CORE(username, password, Hop3x_Instance):
     
-    logger.info('We are waiting for Hop3x applet to initialize (5s)')
+    logger.info('We are waiting for Hop3x applet to initialize..')
     #Handle Hop3x login applet
-    time.sleep( 8 ) #Wait for it..
+    time.sleep( 10 ) #Wait for it..
     #Hop3x_Instance.terminate()
     logger.info('GUI Bot: Processing automatic login')
     setHop3xLogin(username, password)
@@ -971,6 +1049,8 @@ def Zup3x_CORE(username, password, Hop3x_Instance):
         return -1
 
     logger.info('Zup3x is binded to <'+currentSession['client']+'> with session <'+currentSession['session']+'>')
+    notifyStats['user'] = currentSession['client']
+    notifyStats['session'] = currentSession['session']
 
     LOCAL_PROJECTS = loadLocalProjects()
     logger.info('Target project(s) = '+str(LOCAL_PROJECTS))
@@ -1132,7 +1212,9 @@ def Zup3x_CORE(username, password, Hop3x_Instance):
             else:
                 logger.warning('Unable to process <localProjects/'+project+'/'+cfile+'>, Hop3x does not support dir creation!')
                 notifyStats['warning'] += 1
-                
+        #Update stats.
+        if notifyStats['fileModified'] > 0:
+            notifyStats['projectModified'] += 1            
     return 0
 
 def getRemoteRepository(bb_user, bb_pass):
@@ -1198,7 +1280,7 @@ if __name__ == "__main__":
         sessionID = getArgValue('sID', sys.argv)
 
         keyboardLayout = getArgValue('kl', sys.argv)
-
+        #GMail notification
         NotifyAccount = getArgValue('nu', sys.argv)
         NotifyPassword = getArgValue('np', sys.argv)
     
@@ -1281,34 +1363,31 @@ if __name__ == "__main__":
         elif(res < 0):
             waitNextIter = 25
             logger.warning("Next iteration in %i sec after issue(s), abord with code %i" % (waitNextIter, res))
-        
-        SESSIONS = parseSession()
-        
-        if (len(SESSIONS) != 0):
-            #If there aren't any DECONNECTION symbol on XML trace
-            if (isClientDeconnected(SESSIONS[0]) == False):
-                logger.warning('Zup3x failed to quit Hop3x properly, SIGQUIT sended instead!')
-                logger.warning('Failed to quit Hop3x properly, force quit instead..!')
-                Hop3x_Instance.terminate()
+
+        #Terminate JRE instance if still running in background
+        logger.info('Terminate JRE if still running in background to avoid common issues.')
+        Hop3x_Instance.terminate()
         
         t2 = datetime.now()
         delta = t2 - t1
 
-        if (NotifyAccount != None and NotifyPassword != None):
-            statResume = '''Zup3x notify by your slave, heum.. I mean assistant!\n\n%i project(s) were created.
-                        \n%i file(s) were created\n%i file(s) were modified\n%i file(s) were deleted\n\n
-                        %i error(s) was faced and got %i warning(s)\n\n\nI attached the lastest log to be sure!''' % (notifyStats['projectCreated'], notifyStats['fileCreated'], notifyStats['fileModified'], notifyStats['fileDeleted'], notifyStats['error'], notifyStats['warning'])
-
-            notifyHandle.send('[Zup3x] Instance ending ('+str(notifyStats['error'])+' error(s), '+str(notifyStats['warning'])+' warning(s))', statResume)
-
         logger.info('Zup3x have worked for '+str(delta.total_seconds())+' sec.')
+        notifyStats['worktime'] = delta.total_seconds()
+
+        #Send report if needed.
+        if (NotifyAccount != None and NotifyPassword != None and res <= 0):
+            statResume = generateMailBody(notifyStats)
+            notifyHandle.send('[Zup3x] Rapport assistant ('+str(notifyStats['error'])+' erreur(s), '+str(notifyStats['warning'])+' avertissement(s))', statResume)
 
         #Reset notifyStats
         notifyStats['projectCreated'] = 0
+        notifyStats['projectModified'] = 0
         notifyStats['fileCreated'] = 0
         notifyStats['fileModified'] = 0
+        notifyStats['fileDeleted'] = 0
         notifyStats['error'] = 0
         notifyStats['warning'] = 0
+        notifyStats['worktime'] = 0
 
         FNULL.close()
         time.sleep(waitNextIter)
