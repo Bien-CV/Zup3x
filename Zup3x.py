@@ -543,6 +543,26 @@ def getDeclaredFilesProject(SESSION, PROJECT_NAME):
     #hop3xEtudiant\data\workspace\2015-Travail-Personnel\TDA-Annexes
     return getDeclaredFilesHop3x('hop3xEtudiant/data/workspace/'+SESSION+'/'+PROJECT_NAME+'/'+PROJECT_NAME+'.xml')
 
+def deleteGhostProject(SESSION, PROJECT_NAME):
+    if (os.path.exists('Hop3xEtudiant/data/workspace/'+SESSION+'/'+PROJECT_NAME) == True):
+        fileDeclared = getDeclaredFilesProject(SESSION, PROJECT_NAME)
+        if (fileDeclared != False):
+            nbFiles = len(fileDeclared)
+            for cfile in fileDeclared:
+                if (os.path.exists('Hop3xEtudiant/data/workspace/'+SESSION+'/'+PROJECT_NAME+'/'+cfile) == False):
+                    nbFiles -= 1
+            if (nbFiles == 0):
+                try:
+                    logger.info('Ghost project directory detected for <'+PROJECT_NAME+'>')
+                    os.remove('Hop3xEtudiant/data/workspace/'+SESSION+'/'+PROJECT_NAME+'/'+PROJECT_NAME+'.xml')
+                    os.rmdir('Hop3xEtudiant/data/workspace/'+SESSION+'/'+PROJECT_NAME)
+                    logger.info('Zup3x has removed a ghost project in Hop3x <'+PROJECT_NAME+'>')
+                    return True
+                except:
+                    logger.error('Unable to cleanup ghost project named <'+PROJECT_NAME+'>')
+    return False
+
+
 def getLastestTraceBuffer(SESSION, CLIENT_NAME):
 
     AVAILABLE_TRACE = sorted(glob.glob("Hop3xEtudiant/data/trace/"+CLIENT_NAME+"/"+SESSION+"/" + "*.xml"), key=os.path.getctime)
@@ -1112,6 +1132,7 @@ def Zup3x_CORE(username, password, Hop3x_Instance):
     logger.info('Target project(s) = '+str(LOCAL_PROJECTS))
     
     modifiedProjectsList = []
+    compareOrigin = False
 
     for project in LOCAL_PROJECTS:
         
@@ -1133,6 +1154,7 @@ def Zup3x_CORE(username, password, Hop3x_Instance):
                 logger.info('Trying to create new project named <'+project+'> with import function')
                 importNewProject(os.path.abspath('localProjects/'+project+'/origin'), project, 'C+Make')
                 otarget = project
+                compareOrigin = True
             else:
                 logger.warning('This session does not have any project named <'+project+'>')
                 logger.info('Zup3x is now trying to create a new project in <'+currentSession['session']+'>')
@@ -1260,7 +1282,11 @@ def Zup3x_CORE(username, password, Hop3x_Instance):
                     #remoteSize = os.path.getsize("Hop3xEtudiant/data/workspace/"+currentSession['session']+"/"+project+"/"+cfile)
                     #localSize = os.path.getsize("localProjects/"+project+"/"+cfile)
                     
-                    mergeDic = mergeFiles("localProjects/"+project+"/"+cfile, "Hop3xEtudiant/data/workspace/"+currentSession['session']+"/"+project+"/"+cfile)
+                    if (compareOrigin == False):
+                        mergeDic = mergeFiles("localProjects/"+project+"/"+cfile, "Hop3xEtudiant/data/workspace/"+currentSession['session']+"/"+project+"/"+cfile)
+                    else:
+                        #Hop3x write files to disk only when instance is ending.
+                        mergeDic = mergeFiles("localProjects/"+project+"/"+cfile, "localProjects/"+project+"/origin/"+cfile)
 
                     #Non viable methode for changes detections, need to be reviewed!
                     if (len(mergeDic) > 0):
@@ -1348,6 +1374,9 @@ def hasAnythingChanged():
 
         if (targetSession == False):
             logger.info('New project <'+project+'> has been detected')
+            return True
+
+        if (deleteGhostProject(targetSession, project) == True): #Just in case
             return True
 
         pfiles = os.listdir('localProjects/'+project)
