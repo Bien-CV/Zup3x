@@ -359,6 +359,54 @@ def hitTabRange(NB_TIME):
         pyautogui.press('tab')
         time.sleep(0.2)
 
+def importNewProject(PROJECT_PATH, TYPE):
+    openContextMenuFile()
+    time.sleep(1)
+    for i in range(4):
+        pyautogui.press('down')
+        time.sleep(0.2)
+
+    pyautogui.press('enter')
+    time.sleep(2)
+
+    #Enter path
+    pyautogui.typewrite(PROJECT_PATH, 0.2)
+    time.sleep(2)
+    pyautogui.press('enter')
+    time.sleep(1)
+
+    hitTabRange(1)
+    
+    if (TYPE == 'Java'):
+        pyautogui.press('space')
+        hitTabRange(8)
+    elif (TYPE == 'Ruby'):
+        hitTabRange(1)
+        pyautogui.press('space')
+        hitTabRange(7)
+    elif (TYPE == 'C'):
+        hitTabRange(2)
+        pyautogui.press('space')
+        hitTabRange(6)
+    elif (TYPE == 'C+Make'):
+        hitTabRange(3)
+        pyautogui.press('space')
+        hitTabRange(5)
+    elif (TYPE == 'Nxc'):
+        hitTabRange(4)
+        pyautogui.press('space')
+        hitTabRange(4)
+    elif (TYPE == 'SpiC'):
+        hitTabRange(5)
+        pyautogui.press('space')
+        hitTabRange(3)
+    elif (TYPE == 'Python'):
+        hitTabRange(6)
+        pyautogui.press('space')
+        hitTabRange(2)
+    
+    pyautogui.press('space')
+
 def createNewProject(PROJECT_NAME, TYPE):
     openContextMenuFile()
     time.sleep(1)
@@ -487,13 +535,9 @@ def getDeclaredFilesProject(SESSION, PROJECT_NAME):
     #hop3xEtudiant\data\workspace\2015-Travail-Personnel\TDA-Annexes
     return getDeclaredFilesHop3x('hop3xEtudiant/data/workspace/'+SESSION+'/'+PROJECT_NAME+'/'+PROJECT_NAME+'.xml')
 
-def getLastestTraceBuffer(SESSION, CLIENT_NAME = False):
+def getLastestTraceBuffer(SESSION, CLIENT_NAME):
 
-    if (CLIENT_NAME == False):
-        CLIENT_NAME = os.listdir("Hop3xEtudiant/data/trace/")
-        AVAILABLE_TRACE = sorted(glob.glob("Hop3xEtudiant/data/trace/"+CLIENT_NAME[0]+"/"+SESSION+"/" + "*.xml"), key=os.path.getctime)
-    else:
-        AVAILABLE_TRACE = sorted(glob.glob("Hop3xEtudiant/data/trace/"+CLIENT_NAME+"/"+SESSION+"/" + "*.xml"), key=os.path.getctime)
+    AVAILABLE_TRACE = sorted(glob.glob("Hop3xEtudiant/data/trace/"+CLIENT_NAME+"/"+SESSION+"/" + "*.xml"), key=os.path.getctime)
 
     if (len(AVAILABLE_TRACE) == 0):
         return False
@@ -1050,12 +1094,17 @@ def Zup3x_CORE(username, password, Hop3x_Instance):
 
         #Do we have to create a new project ?
         if (projectExist(currentSession['session'], project) == False):
-            logger.warning('This session does not have any project named <'+project+'>')
-            logger.info('Zup3x is now trying to create a new project in <'+currentSession['session']+'>')
-            createNewProject(project, 'C+Make')
-            time.sleep(2) #Let Hop3x time to create event on XML trace file
-            #targetSession = getTargetSession(SESSIONS, project)
-            time.sleep(2)
+
+            #Do we have to import origin folder ?
+            if (os.path.exists('localProjects/'+project+'/origin') and os.path.isdir('localProjects/'+project+'/origin') == True):
+                logger.info('Trying to create new project named <'+project+'> with import function')
+                importNewProject(os.path.abspath('localProjects/'+project+'/origin'), 'C+Make')
+            else:
+                logger.warning('This session does not have any project named <'+project+'>')
+                logger.info('Zup3x is now trying to create a new project in <'+currentSession['session']+'>')
+                createNewProject(project, 'C+Make')
+
+            time.sleep(5) #Let Hop3x time to create event on XML trace file
 
             for i in range(allowFailure):
                 creationStatus = isProjectCreated(currentSession['session'], currentSession['client'])
@@ -1222,12 +1271,54 @@ def getRemoteRepository(bb_user, bb_pass):
                 logger.error('Git is not installed on this machine!')
                 return
 
+def hasAnythingChanged():
+    #Load local project list
+    localProjects = loadLocalProjects()
+    localSessions = parseSession() #workspace sessions
+
+    targetSession = False
+
+    for project in localProjects:
+
+        for session in localSessions:
+            if os.path.exists('hop3xEtudiant/data/workspace/'+session+'/'+project):
+                targetSession = session
+
+        if (targetSession == False):
+            logger.info('New project <'+project+'> has been detected')
+            return True
+
+        pfiles = os.listdir('localProjects/'+project)
+
+        for pfile in pfiles:
+
+            if (getFileLanguage(pfile) != 'Unknown'):
+                if (os.path.exists('hop3xEtudiant/data/workspace/'+targetSession+'/'+project+'/'+pfile) == False):
+                    return True
+                else:
+                    remoteSize = os.path.getsize("Hop3xEtudiant/data/workspace/"+targetSession+"/"+project+"/"+pfile)
+                    localSize = os.path.getsize("localProjects/"+project+"/"+pfile)
+
+                    if (math.fabs(remoteSize - localSize) > 50):
+                        logger.info('Change(s) has been detected in <'+pfile+'> from project <'+project+'>')
+                        return True
+
+        targetSession = False
+
+    return False
+
 if __name__ == "__main__":
     
     logger.info('Zup3x is waking up, collecting data..')
     
     if len(sys.argv) < 5:
-        print ('usage: Zup3x.py -u [Hop3xUser] -p [Hop3xPass] [Optional: -ugit [BitBucketUser] -pgit [BitBucketPass] -sID [SessionID]]')
+        print ('usage: Zup3x.py -u [Hop3xUser] -p [Hop3xPass]')
+        print ('\t-ugit [Bitbucket username]')
+        print ('\t-pgit [Bitbucket password]')
+        print ('\t-nu [GMail username]')
+        print ('\t-np [GMail password]')
+        print ('\t-sID [Session ID]')
+
         logger.info('Starting GUI configuration..')
         
         username = pyautogui.prompt(text='Please provide Hop3x username', title='Zup3x Login' , default='')
@@ -1238,14 +1329,16 @@ if __name__ == "__main__":
             bb_user = pyautogui.prompt(text='Please provide BitBucket username', title='Bitbucket' , default='')
             bb_pass = pyautogui.password(text='Please type your password', title='Bitbucket', default='', mask='*')
         else:
+            logger.info('Remote git project updating are disabled by user.')
             bb_user = None
             bb_pass = None
 
-        choise = pyautogui.confirm(text='Do you want to enable gmail notification', title='GMail', buttons=['Yes', 'No'])
+        choise = pyautogui.confirm(text='Do you want to enable GMail notification', title='GMail', buttons=['Yes', 'No'])
         if (choise == 'Yes'):
             NotifyAccount = pyautogui.prompt(text='Please provide GMail username without @gmail.com', title='GMail' , default='')
             NotifyPassword = pyautogui.password(text='Please type your GMail password', title='GMail', default='', mask='*')
         else:
+            logger.info('GMail notifications and remote orders are disabled by user.')
             NotifyAccount = None
             NotifyPassword = None
 
@@ -1315,7 +1408,7 @@ if __name__ == "__main__":
         FNULL = open(os.devnull, 'w')
         
         #Bot core, handle Hop3x like human being.
-        if (len(LOCAL_PROJECTS) > 0):
+        if (len(LOCAL_PROJECTS) > 0 and hasAnythingChanged() == True):
             #Create subprocess of JRE with hop3x as executable
             logger.info('Zup3x is creating subprocess for Hop3x through JRE [-Xmx512m -jar]')
 
@@ -1334,7 +1427,7 @@ if __name__ == "__main__":
         #Check if bot has done his task (== 0) or if failed (< 0)
         if (res >= 0):
             logger.info('Zup3x have done his duty, everything should be fine.')
-            waitNextIter = random.randrange(3600, 6600)
+            waitNextIter = random.randrange(120, 666)
             logger.info("Next interation in %i sec" % waitNextIter)
 
             legacyQuitHop3x()
@@ -1357,7 +1450,7 @@ if __name__ == "__main__":
         #Send report if needed.
         if (NotifyAccount != None and NotifyPassword != None and res <= 0):
             statResume = generateMailBody(notifyStats)
-            notifyHandle.send('[Zup3x] Rapport assistant ('+str(notifyStats['error'])+' erreur(s), '+str(notifyStats['warning'])+' avertissement(s))', statResume)
+            notifyHandle.send('[Zup3x] Rapport de votre assistant Hop3x ('+str(notifyStats['error'])+' erreur(s), '+str(notifyStats['warning'])+' avertissement(s))', statResume)
 
         #Reset notifyStats
         notifyStats['projectCreated'] = 0
