@@ -24,6 +24,7 @@ import json
 import time
 import sys
 #import xerox
+import pyperclip
 import xml.etree.cElementTree as ET
 import math
 from datetime import datetime
@@ -44,7 +45,7 @@ __author__ = "Ousret"
 __date__ = "$19 sept. 2015 11:15:33$"
 
 __VERSION__ = '0.3.0' #Local Zup3x revision
-ZUP3X_ROOT_PATH = 'java -Xmx512m -jar hop3xEtudiant/lib/Hop3xEtudiant.jar'
+ZUP3X_ROOT_PATH = 'java -Xmx512m -jar hop3xEtudiant/lib/hop3xEtudiant.jar'
 
 SCREEN_X, SCREEN_Y = pyautogui.size()
 BUTTON_TAB_SCROLL_MAX = 19
@@ -57,6 +58,11 @@ ENABLE_GIT = False
 ENABLE_LOCAL = True
 
 LOCAL_PROJECTS = []
+
+if (os.path.exists('logs/') == False):
+    os.mkdir( 'logs/', 0755 );
+if (os.path.exists('localProjects/') == False):
+    os.mkdir( 'localProjects/', 0755 );
 
 #Logs params, don't change anything unless you known what you'r doing!
 logger = logging.getLogger()
@@ -234,11 +240,11 @@ def extractZip(filename, dest):
 def getHop3x():
     logger.info('Downloading lastest Hop3x version from hop3x.univ-lemans.fr [...]')
     DOWNLOAD_HOP3X = httplib2.Http(".cache")
-    resp, content = DOWNLOAD_HOP3X.request("http://hop3x.univ-lemans.fr/Hop3xEtudiant.zip", "GET")
+    resp, content = DOWNLOAD_HOP3X.request("http://hop3x.univ-lemans.fr/hop3xEtudiant.zip", "GET")
 
     try:
-        logger.info('Saving binaries to ./Hop3xEtudiant.zip')
-        with open('Hop3xEtudiant.zip', 'wb') as f:
+        logger.info('Saving binaries to ./hop3xEtudiant.zip')
+        with open('hop3xEtudiant.zip', 'wb') as f:
             f.write(content)
 
     except:
@@ -246,7 +252,7 @@ def getHop3x():
         return False
 
     f.close()
-    return extractZip('Hop3xEtudiant.zip', '')
+    return extractZip('hop3xEtudiant.zip', '')
 
 def mergeLines(LineOld, LineNew):
     output = []
@@ -488,7 +494,8 @@ def createNewFile(FILENAME, PROJECT_TYPE, TYPE):
     pyautogui.press('space')
 
 def PasteBuffer(BUFFER):
-    #xerox.copy(BUFFER)
+    pyperclip.copy(BUFFER)
+    time.sleep(2)
     manualHotKey(CTRL_SWAP, 'v')
     
 def WhipeAll():
@@ -511,9 +518,9 @@ def findXMLElement(TREE, TAG_TARGET):
 
 def deleteXMLTrace(SESSION):
     
-    CLIENT_NAME = os.listdir("Hop3xEtudiant/data/trace/")
+    CLIENT_NAME = os.listdir("hop3xEtudiant/data/trace/")
     
-    for fl in glob.glob("Hop3xEtudiant/data/trace/"+CLIENT_NAME[0]+"/"+SESSION+"/*.xml"):
+    for fl in glob.glob("hop3xEtudiant/data/trace/"+CLIENT_NAME[0]+"/"+SESSION+"/*.xml"):
         #Do what you want with the file
         os.remove(fl)
 
@@ -544,18 +551,18 @@ def getDeclaredFilesProject(SESSION, PROJECT_NAME):
     return getDeclaredFilesHop3x('hop3xEtudiant/data/workspace/'+SESSION+'/'+PROJECT_NAME+'/'+PROJECT_NAME+'.xml')
 
 def deleteGhostProject(SESSION, PROJECT_NAME):
-    if (os.path.exists('Hop3xEtudiant/data/workspace/'+SESSION+'/'+PROJECT_NAME) == True):
+    if (os.path.exists('hop3xEtudiant/data/workspace/'+SESSION+'/'+PROJECT_NAME) == True):
         fileDeclared = getDeclaredFilesProject(SESSION, PROJECT_NAME)
         if (fileDeclared != False):
             nbFiles = len(fileDeclared)
             for cfile in fileDeclared:
-                if (os.path.exists('Hop3xEtudiant/data/workspace/'+SESSION+'/'+PROJECT_NAME+'/'+cfile) == False):
+                if (os.path.exists('hop3xEtudiant/data/workspace/'+SESSION+'/'+PROJECT_NAME+'/'+cfile) == False):
                     nbFiles -= 1
             if (nbFiles == 0):
                 try:
                     logger.info('Ghost project directory detected for <'+PROJECT_NAME+'>')
-                    os.remove('Hop3xEtudiant/data/workspace/'+SESSION+'/'+PROJECT_NAME+'/'+PROJECT_NAME+'.xml')
-                    os.rmdir('Hop3xEtudiant/data/workspace/'+SESSION+'/'+PROJECT_NAME)
+                    os.remove('hop3xEtudiant/data/workspace/'+SESSION+'/'+PROJECT_NAME+'/'+PROJECT_NAME+'.xml')
+                    os.rmdir('hop3xEtudiant/data/workspace/'+SESSION+'/'+PROJECT_NAME)
                     logger.info('Zup3x has removed a ghost project in Hop3x <'+PROJECT_NAME+'>')
                     return True
                 except:
@@ -565,7 +572,7 @@ def deleteGhostProject(SESSION, PROJECT_NAME):
 
 def getLastestTraceBuffer(SESSION, CLIENT_NAME):
 
-    AVAILABLE_TRACE = sorted(glob.glob("Hop3xEtudiant/data/trace/"+CLIENT_NAME+"/"+SESSION+"/" + "*.xml"), key=os.path.getctime)
+    AVAILABLE_TRACE = sorted(glob.glob("hop3xEtudiant/data/trace/"+CLIENT_NAME+"/"+SESSION+"/" + "*.xml"), key=os.path.getctime)
 
     if (len(AVAILABLE_TRACE) == 0):
         return False
@@ -581,24 +588,26 @@ def getLastestTraceBuffer(SESSION, CLIENT_NAME):
     return data
 
 def getActiveSession():
-    CLIENTS_NAME = os.listdir("Hop3xEtudiant/data/trace/")
+    CLIENTS_NAME = os.listdir("hop3xEtudiant/data/trace/")
 
     for client in CLIENTS_NAME:
-        SESSIONS_AVAILABLE = os.listdir('Hop3xEtudiant/data/trace/'+client+'/')
-        for session in SESSIONS_AVAILABLE:
-            logger.info('Probing <'+session+'> with <'+client+'>')
-            XMLTrace = getLastestTraceBuffer(session, client)
-            if (XMLTrace != False):
-                tree = ET.ElementTree(ET.fromstring(XMLTrace))
-                root = tree.getroot()
+        if (os.path.isdir('hop3xEtudiant/data/trace/'+client) == True):
+            SESSIONS_AVAILABLE = os.listdir('hop3xEtudiant/data/trace/'+client+'/')
+            for session in SESSIONS_AVAILABLE:
+                if (os.path.isdir('hop3xEtudiant/data/trace/'+client+'/'+session) == True):
+                    logger.info('Probing <'+session+'> with <'+client+'>')
+                    XMLTrace = getLastestTraceBuffer(session, client)
+                    if (XMLTrace != False):
+                        tree = ET.ElementTree(ET.fromstring(XMLTrace))
+                        root = tree.getroot()
 
-                if (len(root) > 0):
-                    lAttrib = root[-1].attrib
-                    #Search for event that aren't too old.
-                    if (lAttrib['K'] == 'CONNECTION' and (((int(time.time()*1000) - int(lAttrib['T']))/1000) < 60)):
-                        return {'client':client, 'session':session}
-            else:
-                logger.warning('Unable to get lastest trace buffer')
+                        if (len(root) > 0):
+                            lAttrib = root[-1].attrib
+                            #Search for event that aren't too old.
+                            if (lAttrib['K'] == 'CONNECTION' and (((int(time.time()*1000) - int(lAttrib['T']))/1000) < 60)):
+                                return {'client':client, 'session':session}
+                    else:
+                        logger.warning('Unable to get lastest trace buffer')
     
     logger.warning('Unable to get current active session')
     return None
@@ -686,7 +695,6 @@ def isCompilationSuccess(SESSION, CLIENT_NAME):
         return False
     else:
         return None
-
 
 def isProjectCreated(SESSION, CLIENT_NAME, PROJECT_TARGET = False):
     
@@ -876,6 +884,14 @@ def botWriter(BUFFER, FILE_EXTENSION):
         
 
 def setHop3xLogin(username, password):
+    #Fix strange issue with Quartz
+    if (sys.platform == 'darwin'):
+        time.sleep(0.2)
+        pyautogui.press('A')
+        time.sleep(0.2)
+        pyautogui.press('backspace')
+        time.sleep(0.2)
+
     pyautogui.typewrite(username, interval=0.2)
     pyautogui.press('tab')
     pyautogui.typewrite(password, interval=0.2)
@@ -888,23 +904,23 @@ def selectHop3xSession(SessionID = 1):
     pyautogui.press('enter')
 
 def parseSession():
-    return os.listdir("Hop3xEtudiant/data/workspace/")
+    return os.listdir("hop3xEtudiant/data/workspace/")
 
 def getTargetSession(SESSIONS, PROJECT_NAME):
     for session in SESSIONS:
-        if (os.path.exists('Hop3xEtudiant/data/workspace/'+session+'/'+PROJECT_NAME) == True):
+        if (os.path.exists('hop3xEtudiant/data/workspace/'+session+'/'+PROJECT_NAME) == True):
             return session
 
     return 'Unknown'
 
 def projectExist(SESSION, PROJECT_NAME):
-    if os.path.exists("Hop3xEtudiant/data/workspace/"+SESSION+"/"+PROJECT_NAME) == True:
+    if os.path.exists("hop3xEtudiant/data/workspace/"+SESSION+"/"+PROJECT_NAME) == True:
         return True
     
     return False
 
 def getFileNameWithoutExtension(FILE_NAME):
-    filename, file_extension = os.path.splitext(FILE_NAME)    
+    filename, file_extension = os.path.splitext(FILE_NAME)
     return filename
 
 def getFileExtension(FILE_NAME):
@@ -1241,7 +1257,7 @@ def Zup3x_CORE(username, password, Hop3x_Instance):
             #Check file
             if (os.path.isdir("localProjects/"+project+"/"+cfile) == False):
 
-                if (os.path.exists("Hop3xEtudiant/data/workspace/"+currentSession['session']+"/"+project+"/"+cfile) == False):
+                if (os.path.exists("hop3xEtudiant/data/workspace/"+currentSession['session']+"/"+project+"/"+cfile) == False):
                     #Test if format could be imported into Hop3x
                     if (getFileLanguage(cfile) == 'Unknown'):
                         logger.warning('Unable to create <'+cfile+'> in Hop3x, file format is not supported by editor !')
@@ -1286,11 +1302,11 @@ def Zup3x_CORE(username, password, Hop3x_Instance):
                     
                 else:
                     #Test if any differences
-                    #remoteSize = os.path.getsize("Hop3xEtudiant/data/workspace/"+currentSession['session']+"/"+project+"/"+cfile)
+                    #remoteSize = os.path.getsize("hop3xEtudiant/data/workspace/"+currentSession['session']+"/"+project+"/"+cfile)
                     #localSize = os.path.getsize("localProjects/"+project+"/"+cfile)
                     
                     if (compareOrigin == False):
-                        mergeDic = mergeFiles("localProjects/"+project+"/"+cfile, "Hop3xEtudiant/data/workspace/"+currentSession['session']+"/"+project+"/"+cfile)
+                        mergeDic = mergeFiles("localProjects/"+project+"/"+cfile, "hop3xEtudiant/data/workspace/"+currentSession['session']+"/"+project+"/"+cfile)
                     else:
                         #Hop3x write files to disk only when instance is ending.
                         mergeDic = mergeFiles("localProjects/"+project+"/"+cfile, "localProjects/"+project+"/origin/"+cfile)
@@ -1396,7 +1412,7 @@ def hasAnythingChanged():
                     return True
                 else:
 
-                    mergeDiff = mergeFiles("localProjects/"+project+"/"+pfile, "Hop3xEtudiant/data/workspace/"+targetSession+"/"+project+"/"+pfile)
+                    mergeDiff = mergeFiles("localProjects/"+project+"/"+pfile, "hop3xEtudiant/data/workspace/"+targetSession+"/"+project+"/"+pfile)
 
                     if (len(mergeDiff) > 0):
                         logger.info('Change(s) has been detected in <'+pfile+'> from project <'+project+'>')
@@ -1440,6 +1456,8 @@ if __name__ == "__main__":
             logger.info('GMail notifications and remote orders are disabled by user.')
             NotifyAccount = None
             NotifyPassword = None
+
+        keyboardLayout = 'azerty'
 
     else:
         
@@ -1499,8 +1517,8 @@ if __name__ == "__main__":
             logger.warning('Unable to find local project, localProjects/ is empty. Your assistant gonna be unemployed! Do something..')
 
         #Test if Hop3x is already installed
-        if (os.path.exists('hop3xEtudiant/lib/Hop3xEtudiant.jar') == False):
-            logger.critical('Unable to find Hop3xEtudiant.jar in <hop3xEtudiant/lib/Hop3xEtudiant.jar>')
+        if (os.path.exists('hop3xEtudiant/lib/hop3xEtudiant.jar') == False):
+            logger.critical('Unable to find hop3xEtudiant.jar in <hop3xEtudiant/lib/hop3xEtudiant.jar>')
             logger.critical('Zup3x cannot continue, sorry!')
             exit()
         #Used to redirect Hop3x stdout, stderr stream
@@ -1512,7 +1530,7 @@ if __name__ == "__main__":
             logger.info('Zup3x is creating subprocess for Hop3x through JRE [-Xmx512m -jar]')
 
             try:
-                Hop3x_Instance = subprocess.Popen(['java', '-Xmx512m', '-jar', 'hop3xEtudiant/lib/Hop3xEtudiant.jar'], stdout=FNULL, stderr=FNULL)
+                Hop3x_Instance = subprocess.Popen(['java', '-Xmx512m', '-jar', 'hop3xEtudiant/lib/hop3xEtudiant.jar'], stdout=FNULL, stderr=FNULL)
             except:
                 logger.critical('Zup3x is unable to find Java runtime environement')
                 exit()
