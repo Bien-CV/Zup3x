@@ -60,9 +60,9 @@ ENABLE_LOCAL = True
 LOCAL_PROJECTS = []
 
 if (os.path.exists('logs/') == False):
-    os.mkdir( 'logs/', 0755 );
+    os.mkdir( 'logs/');
 if (os.path.exists('localProjects/') == False):
-    os.mkdir( 'localProjects/', 0755 );
+    os.mkdir( 'localProjects/' );
 
 #Logs params, don't change anything unless you known what you'r doing!
 logger = logging.getLogger()
@@ -180,11 +180,11 @@ def getKnownledgeQuote():
     CPUQuote[1] = "La masse atomique du germanium est de 72,64."
     CPUQuote[2] = "Les avocats sont les plus riches de tous les fruits et de toutes les professions liberales."
     CPUQuote[3] = "L'eau chaude gele plus vite que l'eau froide."
-    CPUQuote[4] = "Avec 3410 C, le tungstene détient le record de temperature de fusion de tous les metaux."
-    CPUQuote[5] = "Marie Curie a découvert la theorie de la radioactivite, le traitement de la radioactivite et la mort par radioactivite."
-    CPUQuote[6] = "William Shakespeare n'a jamais existe. Ses pièces ont été creees en 1589 par Francis Bacon, qui s'est servi d'une planche de ouija pour asservir des esprits dramaturges."
+    CPUQuote[4] = "Avec 3410 C, le tungstene dÃ©tient le record de temperature de fusion de tous les metaux."
+    CPUQuote[5] = "Marie Curie a dÃ©couvert la theorie de la radioactivite, le traitement de la radioactivite et la mort par radioactivite."
+    CPUQuote[6] = "William Shakespeare n'a jamais existe. Ses piÃ¨ces ont Ã©tÃ© creees en 1589 par Francis Bacon, qui s'est servi d'une planche de ouija pour asservir des esprits dramaturges."
     CPUQuote[7] = "On affirme a tort que Thomas Edison a invente le culturisme en 1878. En realite, Nikola Tesla avait fait breveter cette activite trois ans plus tot, sous le nom de { bobinisme }."
-    CPUQuote[8] = "Avant l'invention des oeufs brouilles en 1912, le brunch traditionnel était constitue de poussins crus ou de cailloux brouilles."
+    CPUQuote[8] = "Avant l'invention des oeufs brouilles en 1912, le brunch traditionnel Ã©tait constitue de poussins crus ou de cailloux brouilles."
     CPUQuote[9] = "Un enfant sur six sera un jour ou l'autre kidnappe par un Neerlandais."
     quoteID = random.randrange(0, 9)
 
@@ -197,22 +197,22 @@ def generateMailBody(notifyContent):
     body = '''
     Madame, Monsieur, %s
 
-    J'ai le plaisir de vous annoncer que nous avons executé Hop3x etudiant comme prevu dans notre arrangement.
-    En voici le bilan définitif. A titre informatif, cette session m'a pris %i seconde(s) de mon temps CPU.
+    J'ai le plaisir de vous annoncer que nous avons executÃ© Hop3x etudiant comme prevu dans notre arrangement.
+    En voici le bilan dÃ©finitif. A titre informatif, cette session m'a pris %i seconde(s) de mon temps CPU.
 
-    Zup3x a généré %i erreur(s) ainsi que %i avertissement(s) (!= Concerne uniquement le processus Zup3x)
+    Zup3x a gÃ©nÃ©rÃ© %i erreur(s) ainsi que %i avertissement(s) (!= Concerne uniquement le processus Zup3x)
 
-    J'ai retravaillé les projets suivants: %s
+    J'ai retravaillÃ© les projets suivants: %s
 
-    - %i projet(s) ont ete crée(s) et %i modifié(s).
-    - %i fichier(s) ont ete crée(s) et %i modifié(s) par la même occasion, j'en ai supprimé %i.
+    - %i projet(s) ont ete crÃ©e(s) et %i modifiÃ©(s).
+    - %i fichier(s) ont ete crÃ©e(s) et %i modifiÃ©(s) par la mÃªme occasion, j'en ai supprimÃ© %i.
 
-    J'ai tenté de compiler vos projets %i fois, la compilation eu reussi %i fois.
-    Vous trouverez en piece jointe les données logs généré par Zup3x.
+    J'ai tentÃ© de compiler vos projets %i fois, la compilation eu reussi %i fois.
+    Vous trouverez en piece jointe les donnÃ©es logs gÃ©nÃ©rÃ© par Zup3x.
 
-    Je vous prie d'agréer, Madame, Monsieur, l'expression de mes sentiments distingués.
+    Je vous prie d'agrÃ©er, Madame, Monsieur, l'expression de mes sentiments distinguÃ©s.
 
-    P.S. Cette session vous a necessité %.02f kWh, au tarif actuel, %.02f euros.
+    P.S. Cette session vous a necessitÃ© %.02f kWh, au tarif actuel, %.02f euros.
     P.S.2 Le saviez-vous ? %s
 
     N.B. Vous pouvez m'envoyer les commandes suivantes "STOP" pour que je reste en suspend ou "OK" pour continuer. Je vous confirmerai la bonne reception par mail.
@@ -287,7 +287,7 @@ def mergeFiles(filename1, filename2):
         return None
     
     liste = list(difflib.ndiff(f2.readlines(),f1.readlines()))
-    diff = list() # Contiendra les différences et les lignes
+    diff = list() # Contiendra les diffÃ©rences et les lignes
 
     for i,j in zip(range(liste.__len__()),liste):
         if j[0]=='-' or j[0]=='+':
