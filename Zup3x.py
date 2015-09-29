@@ -212,7 +212,7 @@ def generateMailBody(notifyContent):
 
     Je vous prie d'agréer, Madame, Monsieur, l'expression de mes sentiments distingués.
 
-    P.S. Cette session vous a necessité %.02f kWh, au tarif actuel, %.02f euros.
+    P.S. Cette session vous a necessité %.03f kWh, au tarif actuel, %.04f euros.
     P.S.2 Le saviez-vous ? %s
 
     N.B. Vous pouvez m'envoyer les commandes suivantes "STOP" pour que je reste en suspend ou "OK" pour continuer. Je vous confirmerai la bonne reception par mail.
@@ -287,7 +287,7 @@ def mergeFiles(filename1, filename2):
         return None
     
     liste = list(difflib.ndiff(f2.readlines(),f1.readlines()))
-    diff = list() # Contiendra les différences et les lignes
+    diff = list() # Contiendra les differences et les lignes
 
     for i,j in zip(range(liste.__len__()),liste):
         if j[0]=='-' or j[0]=='+':
@@ -974,7 +974,8 @@ def loadWorkSpaceProjects(SESSION):
 def legacyQuitHop3x():
     manualHotKey(CTRL_SWAP, 'q')
     time.sleep(1) #Let messagebox appear on the screen
-    pyautogui.press('enter')
+    if (sys.platform != 'darwin'):
+        pyautogui.press('enter')
 
 def getArgValue(target, argv):
     
@@ -1276,8 +1277,7 @@ def Zup3x_CORE(username, password, Hop3x_Instance):
                                 time.sleep(15)
                             else:
                                 break;
-
-
+                        
                         if (creationStatus == False):
                             logger.critical('Unable to find <AF> event, Hop3x haven\'t created our file <'+cfile+'>. What a shame!')
                             notifyStats['error'] += 1
@@ -1353,8 +1353,20 @@ def Zup3x_CORE(username, password, Hop3x_Instance):
         time.sleep(5)
         notifyStats['projectHandled'] = str(modifiedProjectsList)
 
+        for i in range(allowFailure):
+            makeStatus = isCompilationSuccess(currentSession['session'], currentSession['client'])
+            if (makeStatus is None):
+                logger.warning('Still waiting for make output..')
+                notifyStats['warning'] += 1
+            else:
+                break
+
         if (isCompilationSuccess(currentSession['session'], currentSession['client']) == True):
+            logger.info('Project <'+project+'> has been compiled with success.')
             notifyStats['compilationSuccess'] += 1
+        else:
+            logger.error('Unable to compile your project, please check your code !')
+            notifyStats['error'] += 1
 
     return 0
 
