@@ -86,6 +86,14 @@ $ python Zup3x.py -u [Hop3x username] -p [Hop3x password]
 
 - I'm using AZERTY keyboard and it seems to write like he recognize QWERTY one, why ?
 	- pyautogui does not support azerty layout for now, but I have fixed this issue on my own. Check my pyautogui repository. Or change your keyboard layout to QWERTY!
+	- Or install my pyautogui patched version.
+
+**Backup solution**
+```sh
+$ git clone https://github.com/Ousret/pyautogui.git
+$ cd pyautogui/
+$ python setup.py install
+```
 
 - Something wrong!! Help me.. please ?
 	- Open issue, I'll do my best when available.

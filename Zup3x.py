@@ -155,7 +155,7 @@ class Notify:
         except:
             logger.warning('Cannot login into your GMail IMAP account, maybe IMAP is not enabled, if so, activate it!')
             return 'ntp'
-
+        
         mail.list()
         # Out: list of "folders" aka labels in gmail.
         mail.select("inbox") # connect to inbox.
@@ -1277,7 +1277,7 @@ def Zup3x_CORE(username, password, Hop3x_Instance):
                                 time.sleep(15)
                             else:
                                 break;
-                        
+
                         if (creationStatus == False):
                             logger.critical('Unable to find <AF> event, Hop3x haven\'t created our file <'+cfile+'>. What a shame!')
                             notifyStats['error'] += 1
@@ -1299,7 +1299,6 @@ def Zup3x_CORE(username, password, Hop3x_Instance):
                         saveCurrentFile()
                         logger.info('<'+cfile+'> is now up to date and saved with Hop3x.')
 
-                    
                 else:
                     #Test if any differences
                     #remoteSize = os.path.getsize("hop3xEtudiant/data/workspace/"+currentSession['session']+"/"+project+"/"+cfile)
