@@ -240,7 +240,7 @@ def extractZip(filename, dest):
 def getHop3x():
     logger.info('Downloading lastest Hop3x version from hop3x.univ-lemans.fr [...]')
     DOWNLOAD_HOP3X = httplib2.Http(".cache")
-    resp, content = DOWNLOAD_HOP3X.request("http://hop3x.univ-lemans.fr/hop3xEtudiant.zip", "GET")
+    resp, content = DOWNLOAD_HOP3X.request("http://hop3x.univ-lemans.fr/Hop3xEtudiant.zip", "GET")
 
     try:
         logger.info('Saving binaries to ./hop3xEtudiant.zip')
@@ -904,7 +904,10 @@ def selectHop3xSession(SessionID = 1):
     pyautogui.press('enter')
 
 def parseSession():
-    return os.listdir("hop3xEtudiant/data/workspace/")
+    if (os.path.exists('hop3xEtudiant/data/workspace/') == False):
+        return []
+    else:
+        return os.listdir("hop3xEtudiant/data/workspace/")
 
 def getTargetSession(SESSIONS, PROJECT_NAME):
     for session in SESSIONS:
@@ -1118,10 +1121,8 @@ def Zup3x_CORE(username, password, Hop3x_Instance):
     logger.info('Session(s) = '+str(SESSIONS))
     
     if (len(SESSIONS) == 0):
-        logger.critical('There\'s no session available, something wrong!')
-        Hop3x_Instance.terminate()
-        notifyStats['error'] += 1
-        return -1
+        logger.warning('Hop3x first loading, we\'ll have to wait a little longer..')
+        notifyStats['warning'] += 1
     
     #Tolerance
     for i in range(allowFailure):
@@ -1130,7 +1131,7 @@ def Zup3x_CORE(username, password, Hop3x_Instance):
 
         if (currentSession is None):
             logger.warning('Unable to find any <CONNECTION> event on Hop3x XML Trace, trying again..')
-            notifyStats['error'] += 1
+            notifyStats['warning'] += 1
             time.sleep(10)
         else:
             break
@@ -1528,8 +1529,8 @@ if __name__ == "__main__":
             logger.warning('Unable to find local project, localProjects/ is empty. Your assistant gonna be unemployed! Do something..')
 
         #Test if Hop3x is already installed
-        if (os.path.exists('hop3xEtudiant/lib/hop3xEtudiant.jar') == False):
-            logger.critical('Unable to find hop3xEtudiant.jar in <hop3xEtudiant/lib/hop3xEtudiant.jar>')
+        if (os.path.exists('hop3xEtudiant/lib/Hop3xEtudiant.jar') == False):
+            logger.critical('Unable to find Hop3xEtudiant.jar in <hop3xEtudiant/lib/Hop3xEtudiant.jar>')
             logger.critical('Zup3x cannot continue, sorry!')
             exit()
         #Used to redirect Hop3x stdout, stderr stream
@@ -1541,7 +1542,7 @@ if __name__ == "__main__":
             logger.info('Zup3x is creating subprocess for Hop3x through JRE [-Xmx512m -jar]')
 
             try:
-                Hop3x_Instance = subprocess.Popen(['java', '-Xmx512m', '-jar', 'hop3xEtudiant/lib/hop3xEtudiant.jar'], stdout=FNULL, stderr=FNULL)
+                Hop3x_Instance = subprocess.Popen(['java', '-Xmx512m', '-jar', 'hop3xEtudiant/lib/Hop3xEtudiant.jar'], stdout=FNULL, stderr=FNULL)
             except:
                 logger.critical('Zup3x is unable to find Java runtime environement')
                 exit()
