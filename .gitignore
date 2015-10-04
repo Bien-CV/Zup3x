@@ -1,5 +1,9 @@
 # Byte-compiled / optimized / DLL files
 __pycache__/
+logs/
+localProjects/
+data/
+hop3xEtudiant/
 *.py[cod]
 
 # C extensions
