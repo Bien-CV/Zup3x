@@ -200,7 +200,7 @@ def generateMailBody(notifyContent):
     J'ai le plaisir de vous annoncer que nous avons executé Hop3x etudiant comme prevu dans notre arrangement.
     En voici le bilan définitif. A titre informatif, cette session m'a pris %i seconde(s) de mon temps CPU.
 
-    Zup3x a généré %i erreur(s) ainsi que %i avertissement(s) (!= Concerne uniquement le processus Zup3x)
+    Zup3x a généré %i erreur(s) ainsi que %i avertissement(s)
 
     J'ai retravaillé les projets suivants: %s
 
@@ -974,6 +974,47 @@ def loadWorkSpaceProjects(SESSION):
     projectsList.sort()
     return projectsList
 
+def getLocalProjectType(PROJECT_TARGET):
+    
+    C_Files = 0
+    H_Files = 0
+    PY_Files = 0
+    RB_Files = 0
+    JAVA_Files = 0 
+
+    if (os.path.isdir('localProjects/'+PROJECT_TARGET) == True):
+        files = os.listdir('localProjects/'+PROJECT_TARGET)
+
+        for cfile in files:
+            if (os.path.isdir('localProjects/'+PROJECT_TARGET+'/'+cfile) == False):
+                ExtFile = getFileLanguage(cfile)
+
+                if (ExtFile == 'Makefile'):
+                    return 'C+Make'
+                elif(ExtFile == 'C'):
+                    C_Files += 1
+                elif(ExtFile == 'H'):
+                    H_Files += 1
+                elif(ExtFile == 'Python'):
+                    PY_Files += 1
+                elif(ExtFile == 'Ruby'):
+                    RB_Files += 1
+                elif(ExtFile == 'Java'):
+                    JAVA_Files += 1
+
+    if (C_Files > 0 or H_Files > 0):
+        return 'C'
+    elif (PY_Files > 0):
+        return 'Python'
+    elif (RB_Files > 0):
+        return 'Ruby'
+    elif (JAVA_Files > 0):
+        return 'Java'
+    else:
+        return 'Unknown'
+
+
+
 def legacyQuitHop3x():
     manualHotKey(CTRL_SWAP, 'q')
     time.sleep(1) #Let messagebox appear on the screen
@@ -1170,13 +1211,13 @@ def Zup3x_CORE(username, password, Hop3x_Instance):
             #Do we have to import origin folder ?
             if (os.path.exists('localProjects/'+project+'/origin') and os.path.isdir('localProjects/'+project+'/origin') == True):
                 logger.info('Trying to create new project named <'+project+'> with import function')
-                importNewProject(os.path.abspath('localProjects/'+project+'/origin'), project, 'C+Make')
+                importNewProject(os.path.abspath('localProjects/'+project+'/origin'), project, getLocalProjectType(project))
                 otarget = project
                 compareOrigin = True
             else:
                 logger.warning('This session does not have any project named <'+project+'>')
                 logger.info('Zup3x is now trying to create a new project in <'+currentSession['session']+'>')
-                createNewProject(project, 'C+Make')
+                createNewProject(project, getLocalProjectType(project))
                 otarget = False
 
             time.sleep(5) #Let Hop3x time to create event on XML trace file
