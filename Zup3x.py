@@ -897,7 +897,7 @@ def botWriter(BUFFER, FILE_EXTENSION):
         elif(speedWriter == 0.09):
             lastspeedUpdate = pos
             speedWriter = random.uniform(0.15, 0.3)
-        elif(speedWriter >= 120):
+        elif(speedWriter >= 30):
             logger.info('This was refreshing. Thank you for letting me take a nap/rest.')
             speedWriter = random.uniform(0.15, 0.3)
 
