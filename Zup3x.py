@@ -23,7 +23,6 @@ import httplib2
 import json 
 import time
 import sys
-#import xerox
 import pyperclip
 import xml.etree.cElementTree as ET
 import math
@@ -34,9 +33,11 @@ from logging.handlers import RotatingFileHandler
 import difflib
 import shutil
 import zipfile
-import signal
 import smtplib
 import imaplib
+import threading
+import re
+import email
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from email.mime.application import MIMEApplication
@@ -80,8 +81,9 @@ stream_handler.setLevel(logging.DEBUG)
 stream_handler.setFormatter(formatter)
 logger.addHandler(stream_handler)
 
-allowFailure = 6
-
+allowFailure = 6 #Nb of allowed failure for one specific bot move
+sleepProcess = False #Boolean, changed with imap thread checker.
+stopProcess = False #Easy way to kill imap thread checker
 notifyStats = {'projectCreated':0, 'projectModified':0 ,'fileCreated':0, 'fileModified':0, 'fileDeleted':0, 'error':0, 'warning': 0, 'session':'Unknown', 'user': 'Unknown', 'worktime': 0, 'nextIteration':0, 'compilationSuccess':0, 'compilation':0, 'projectHandled': 'None' }
 
 if (sys.platform == 'darwin'):
@@ -90,20 +92,6 @@ if (sys.platform == 'darwin'):
 else:
     CTRL_SWAP = 'ctrl'
     STARS_SWAP = 'multiply'
-
-def signalHandle(signal, frame):
-    logger.critical('Zup3x stopped with signal '+signal)
-
-    if (sys.platform == 'win32'):
-        logger.warning('Zup3x is trying to restore keyboard layout after incident.')
-        win32api.LoadKeyboardLayout(originLayout, 1)
-
-    raise Exception('Zup3x can\'t breathe anymore, try to reanimate it!')
-
-if (sys.platform == 'win32'):
-    signal.signal(signal.SIGBREAK, signalHandle)
-else:
-    signal.signal(signal.SIGTERM, signalHandle)
 
 #GMail Notification
 class Notify:
@@ -147,7 +135,7 @@ class Notify:
         server.sendmail(fromaddr,toaddr,msg.as_string())
         server.quit()
 
-    def receiveSig():
+    def receiveSig(self):
         mail = imaplib.IMAP4_SSL('imap.gmail.com')
 
         try:
@@ -159,19 +147,49 @@ class Notify:
         mail.list()
         # Out: list of "folders" aka labels in gmail.
         mail.select("inbox") # connect to inbox.
-        try:
-            result, data = mail.search(None, "ALL")
-            ids = data[0] # data is a list.
-            id_list = ids.split() # ids is a space separated string
-            latest_email_id = id_list[-1] # get the latest
-            result, data = mail.fetch(latest_email_id, "(RFC822)") # fetch the email body (RFC822) for the given ID
-            raw_email = data[0][1]
-            raw_email.lower()
+        result, data = mail.search(None, "ALL")
 
-            return raw_email
-        except:
-            logger.warning('Inbox is empty, cannot receive order.')
-            return 'ntp'
+        ids = data[0] # data is a list.
+        id_list = ids.split() # ids is a space separated string
+
+        latest_email_id = id_list[-1] # get the latest
+        result, data = mail.fetch(latest_email_id, "(RFC822)") # fetch the email body (RFC822) for the given ID
+
+        raw_email = data[0][1]
+        
+        original = email.message_from_string(raw_email.decode("utf-8"))
+
+        extractedFrom = re.findall(r'\<([^>]*)\>', original['From'])
+
+        if (self.username+'@gmail.com' in extractedFrom):
+            return original['Subject'].lower()
+        
+        return 'ntp'
+
+def watchImapSignals(notifHandler):
+    global sleepProcess
+    lastestSignal = 'ntp'
+
+    while (stopProcess == False):
+
+        receivedSig = notifHandler.receiveSig()
+
+        if (lastestSignal != receivedSig and receivedSig != 'ntp'):
+            logger.info('We have received <'+receivedSig+'> command from IMAP inbox')
+            if (receivedSig == 'stop'):
+                logger.info('Zup3x will be paused until we receive new order from imap inbox')
+                notifHandler.send('Pause du processus Zup3x!', 'Je viens de reçevoir la commande <'+receivedSig+'>, n\'oubliez pas de m\'envoyer la commande <OK> pour reprendre!')
+                sleepProcess = True
+            elif(receivedSig == 'ok'):
+                logger.info('Zup3x is now free to continue')
+                notifHandler.send('Reprise du processus Zup3x!', 'Je viens de reçevoir la commande <'+receivedSig+'>')
+                sleepProcess = False
+
+            lastestSignal = receivedSig
+
+        time.sleep(20)
+
+
 
 def getKnownledgeQuote():
     
@@ -785,6 +803,9 @@ def botWriter(BUFFER, FILE_EXTENSION):
     
     for c in BUFFER:
         
+        if (sleepProcess == True):
+            return
+
         #Detection of multiple line comment /* */ and one line { .. }
         if (EnableCodeC and pos+1 < bufSize and BUFFER[pos] == '/' and BUFFER[pos+1] == '*'):
             C_CommentSlashAsterix = True
@@ -1195,6 +1216,9 @@ def Zup3x_CORE(username, password, Hop3x_Instance):
 
     for project in LOCAL_PROJECTS:
         
+        if (sleepProcess == True):
+            return 0
+
         logger.info('Zup3x is now working on <'+project+'> project')
         #Search for current project name in sessions workspaces
         targetSession = getTargetSession(SESSIONS, project)
@@ -1297,6 +1321,8 @@ def Zup3x_CORE(username, password, Hop3x_Instance):
 
         #Part were we edit files or create new ones
         for cfile in files:
+            if (sleepProcess == True):
+                return 0
             #Check file
             if (os.path.isdir("localProjects/"+project+"/"+cfile) == False):
 
@@ -1547,7 +1573,12 @@ if __name__ == "__main__":
     except:
         logger.warning('Cannot set keyboard layout, you may want to change it to QWERTY !')
 
-    notifyHandle = Notify(NotifyAccount, NotifyPassword)
+    if (NotifyAccount != None and NotifyPassword != None):
+        notifyHandle = Notify(NotifyAccount, NotifyPassword)
+        stopProcess = False
+        threadIMAPWatcher = threading.Thread(target=watchImapSignals, args=(notifyHandle,))
+        threadIMAPWatcher.start()
+    
     #Full time job!
     while (True):
         
@@ -1578,7 +1609,7 @@ if __name__ == "__main__":
         FNULL = open(os.devnull, 'w')
         
         #Bot core, handle Hop3x like human being.
-        if (len(LOCAL_PROJECTS) > 0 and hasAnythingChanged() == True):
+        if (len(LOCAL_PROJECTS) > 0 and hasAnythingChanged() == True and sleepProcess == False):
             #Create subprocess of JRE with hop3x as executable
             logger.info('Zup3x is creating subprocess for Hop3x through JRE [-Xmx512m -jar]')
 
@@ -1638,3 +1669,5 @@ if __name__ == "__main__":
 
         FNULL.close()
         time.sleep(waitNextIter)
+
+    stopProcess = True
