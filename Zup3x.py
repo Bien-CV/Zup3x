@@ -1,5 +1,5 @@
 #! /usr/bin/python
-# -*- coding: utf-8 -*-
+# -*- coding: utf-8 -*-'
 
 '''
     Zup3x
@@ -198,9 +198,9 @@ def getKnownledgeQuote():
     CPUQuote[1] = "La masse atomique du germanium est de 72,64."
     CPUQuote[2] = "Les avocats sont les plus riches de tous les fruits et de toutes les professions liberales."
     CPUQuote[3] = "L'eau chaude gele plus vite que l'eau froide."
-    CPUQuote[4] = "Avec 3410 C, le tungstene détient le record de temperature de fusion de tous les metaux."
+    CPUQuote[4] = "Avec 3410 °C, le tungstene détient le record de temperature de fusion de tous les metaux."
     CPUQuote[5] = "Marie Curie a découvert la theorie de la radioactivite, le traitement de la radioactivite et la mort par radioactivite."
-    CPUQuote[6] = "William Shakespeare n'a jamais existe. Ses pièces ont été creees en 1589 par Francis Bacon, qui s'est servi d'une planche de ouija pour asservir des esprits dramaturges."
+    CPUQuote[6] = "William Shakespeare n'a jamais existé. Ses pièces ont été creees en 1589 par Francis Bacon, qui s'est servi d'une planche de ouija pour asservir des esprits dramaturges."
     CPUQuote[7] = "On affirme a tort que Thomas Edison a invente le culturisme en 1878. En realite, Nikola Tesla avait fait breveter cette activite trois ans plus tot, sous le nom de { bobinisme }."
     CPUQuote[8] = "Avant l'invention des oeufs brouilles en 1912, le brunch traditionnel était constitue de poussins crus ou de cailloux brouilles."
     CPUQuote[9] = "Un enfant sur six sera un jour ou l'autre kidnappe par un Neerlandais."
@@ -383,6 +383,7 @@ def hitTabRange(NB_TIME):
         pyautogui.press('tab')
         time.sleep(0.2)
 
+#Does not work on darwin or linux.
 def importNewProject(PROJECT_PATH, PROJECT_NAME, TYPE):
     openContextMenuFile()
     time.sleep(1)
@@ -508,6 +509,10 @@ def createNewFile(FILENAME, PROJECT_TYPE, TYPE):
             hitTabRange(2)
             pyautogui.press('space')
             hitTabRange(2)
+    elif(PROJECT_TYPE == 'Java'):
+        if (TYPE == 'Java'):
+            logger.info('Zup3x is trying to select <Java Class> type for new file')
+            hitTabRange(3)
     
     pyautogui.press('space')
 
@@ -785,13 +790,15 @@ def botWriter(BUFFER, FILE_EXTENSION):
     bufSize = len(BUFFER)
     EnableCodeC = False
     MakefileCode = False
-    speedWriter = 0.2
+    speedWriter = 0.15
     lastspeedUpdate = 0
 
     if (FILE_EXTENSION == 'C' or FILE_EXTENSION == 'H'):
         EnableCodeC = True
     elif(FILE_EXTENSION == 'Makefile'):
         MakefileCode = True
+    elif(FILE_EXTENSION == 'Java'):
+        EnableCodeC = True
     
     FixMultipleLineComment = False
     C_CommentSlashAsterix = False
@@ -882,7 +889,7 @@ def botWriter(BUFFER, FILE_EXTENSION):
                 else:
                     pyautogui.press(STARS_SWAP)
                     time.sleep(speedWriter)
-        elif(c == '\xc3'):  
+        elif(c == 'é' or c == 'è'):  
             pyautogui.press('e')
             time.sleep(speedWriter)
         else:
@@ -1161,6 +1168,23 @@ def searchFileExplorer(SESSION, FILE_TARGET, FILES_LIST, PROJECT_TARGET, CLIENT_
     
     return False
 
+def getExtTarget(filename):
+
+    ext = filename.split('.')
+    if (len(ext) <= 1):
+        return 'Unknown'
+
+    if (ext[-1].lower() == 'java'):
+        return 'Java'
+    elif(ext[-1].lower() == 'c'):
+        return 'C'
+    elif(ext[-1].lower() == 'h'):
+        return 'H'
+    elif(ext[-1].lower() == 'py'):
+        return 'Py'
+
+    return 'Unknown'
+
 def Zup3x_CORE(username, password, Hop3x_Instance):
     
     logger.info('We are waiting for Hop3x applet to initialize..')
@@ -1185,6 +1209,7 @@ def Zup3x_CORE(username, password, Hop3x_Instance):
     if (len(SESSIONS) == 0):
         logger.warning('Hop3x first loading, we\'ll have to wait a little longer..')
         notifyStats['warning'] += 1
+        time.sleep(15)
     
     #Tolerance
     for i in range(allowFailure):
@@ -1334,7 +1359,7 @@ def Zup3x_CORE(username, password, Hop3x_Instance):
                     else:
                         logger.info('<'+cfile+'> does not exist in Hop3x local workspace')
                         logger.info('Zup3x is trying to create <'+cfile+'> in Hop3x')
-                        createNewFile(getFileNameWithoutExtension(cfile), 'C', getFileLanguage(cfile))
+                        createNewFile(getFileNameWithoutExtension(cfile), getExtTarget(cfile), getFileLanguage(cfile))
                         time.sleep(2) #Let Hop3x time to create event on XML trace file
 
                         for i in range(allowFailure):
@@ -1528,6 +1553,7 @@ if __name__ == "__main__":
             bb_pass = None
 
         choise = pyautogui.confirm(text='Do you want to enable GMail notification', title='GMail', buttons=['Yes', 'No'])
+
         if (choise == 'Yes'):
             NotifyAccount = pyautogui.prompt(text='Please provide GMail username without @gmail.com', title='GMail' , default='')
             NotifyPassword = pyautogui.password(text='Please type your GMail password', title='GMail', default='', mask='*')
